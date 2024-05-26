@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 {
     int iRet = -1;
     
-    int dwServerPort=9212;
+    int dwServerPort=9213;
     
     if(argc !=2)
     {

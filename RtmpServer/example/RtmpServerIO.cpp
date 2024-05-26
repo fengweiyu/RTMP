@@ -45,7 +45,7 @@ RtmpServerIO :: RtmpServerIO(int i_iClientSocketFd)
     tRtmpCb.StartPushStream = RtmpServerIO::StartHandlePushStream;
     tRtmpCb.StopPushStream = RtmpServerIO::StopHandlePushStream;
     tRtmpCb.PushVideoData = RtmpServerIO::HandlePushVideoData;
-    tRtmpCb.PushAudioData = RtmpManager::HandlePushAudioData;
+    tRtmpCb.PushAudioData = RtmpServerIO::HandlePushAudioData;
     tRtmpCb.PushScriptData = RtmpServerIO::HandlePushScriptData;
     tRtmpCb.tRtmpPackCb.GetRandom = RtmpServerIO::GetRandom;
     m_pRtmpServer = new RtmpServer(this,&tRtmpCb,NULL);
@@ -164,7 +164,7 @@ int RtmpServerIO :: Proc()
         {
             continue;
         }
-        iRet=m_pRtmpServer->DoCycle(pcRecvBuf,iRecvLen);
+        iRet=m_pRtmpServer->HandleRecvData(pcRecvBuf,iRecvLen);
         if(iRet < 0)
         {
             RTMPS_LOGE("m_pHlsServer->DoCycle err exit %d\r\n",iRecvLen);
@@ -274,13 +274,14 @@ int RtmpServerIO :: HandlePlayURL(const char * url)
         m_pFileName = new string(strURL.substr(dwTestPos+strlen("test/")).c_str());
         m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
         iRet = m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
+        RTMPS_LOGW("m_pMediaHandle->Init %d,%s \r\n",iRet,m_pFileName->c_str());
+        m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
 
         m_pMediaProc = new thread(&RtmpServerIO::MediaProc, this);
         //m_pMediaProc->detach();//注意线程回收
-        m_pRtmpServer->SendHandlePublishCmdResult(iRet,(char *)m_pFileName->c_str());
         return iRet;
     }
-    m_pRtmpServer->SendHandlePublishCmdResult(iRet,(char *)m_pFileName->c_str());
+    m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
     return -1;
 }
 
@@ -406,13 +407,13 @@ int RtmpServerIO :: HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char 
     tFileFrameInfo.dwSampleRate= i_ptRtmpMediaInfo->dwSampleRate;
     tFileFrameInfo.tAudioEncodeParam.dwBitsPerSample= i_ptRtmpMediaInfo->dwBitsPerSample;
     tFileFrameInfo.tAudioEncodeParam.dwChannels= i_ptRtmpMediaInfo->dwChannels;
-    //tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->dwBitsPerSample;
-    //tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->dwChannels;
-    //tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->dwBitsPerSample;
-    //memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);
-    //memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);
-    //memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);
-    tFileFrameInfo.pbFrameStartPos = i_acDataBuf;
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->wSpsLen;
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->wPpsLen;
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->wVpsLen;
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,i_ptRtmpMediaInfo->abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,i_ptRtmpMediaInfo->abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,i_ptRtmpMediaInfo->abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);
+    tFileFrameInfo.pbFrameStartPos = (unsigned char *)i_acDataBuf;
     tFileFrameInfo.iFrameLen = i_iDataLen;
 
     iWriteLen = m_pMediaHandle->FrameToContainer(&tFileFrameInfo,STREAM_TYPE_FMP4_STREAM,m_pbFileBuf,RTMPS_FILE_BUF_MAX_LEN,&iHeaderLen);
@@ -666,7 +667,7 @@ int RtmpServerIO::SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen)
 ******************************************************************************/
 int RtmpServerIO::StartHandlePushStream(char *i_strStreamSrc,void *i_pIoHandle)
 {
-    if(NULL == i_strPalySrc ||NULL == i_pIoHandle)
+    if(NULL == i_strStreamSrc ||NULL == i_pIoHandle)
     {
         RTMP_LOGE("StartPlay NULL \r\n");
         return -1;

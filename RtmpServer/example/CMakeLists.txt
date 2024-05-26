@@ -21,6 +21,7 @@ SET(src_list
     RtmpServerIO.cpp
 	)		
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/../src #后续优化为不依赖
     ${PROJECT_SOURCE_DIR}/../build/linux/${CMAKE_ToolChain}/net/include
     ${PROJECT_SOURCE_DIR}/../build/linux/${CMAKE_ToolChain}/lib/include
     ${PROJECT_SOURCE_DIR}/../build/linux/${CMAKE_ToolChain}/media/include

@@ -45,8 +45,29 @@ public:
 	RtmpServerIO(int i_iClientSocketFd);
 	virtual ~RtmpServerIO();
     int Proc();
+    int SendDatas(char * i_acSendBuf,int i_iSendLen);
     int GetProcFlag();
+    int StopAllProc();
+    int HandlePlayURL(const char * url);
+    int HandlePushURL(const char * url);
+    int HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen);
+        
 private:
+    int MediaProc();
+    int Playing(T_MediaFrameInfo * i_pFrame);
+
+    static int StartPlay(char *i_strPalySrc,void *i_pIoHandle);
+    static int StopPlay(char *i_strPalySrc);//,void *i_pIoHandle
+    static int SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen);
+    static int StartHandlePushStream(char *i_strStreamSrc,void *i_pIoHandle);
+    static int StopHandlePushStream(char *i_strStreamSrc,void *i_pIoHandle);
+    static int HandlePushVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
+    static int HandlePushAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
+    static int HandlePushScriptData(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen);
+    static long GetRandom();
+
+                    
+
     RtmpServer * m_pRtmpServer;
 	int m_iClientSocketFd;
 
