@@ -12,11 +12,17 @@
 #ifndef RTMP_SESSION_H
 #define RTMP_SESSION_H
 
-
 //#include "TcpSocket.h"
 #include "RtmpPack.h"
 #include "RtmpParse.h"
 #include "RtmpMediaHandle.h"
+#include <map>
+#include <string>
+
+using std::string;
+using std::map;
+using std::make_pair;
+
 
 #define RTMP_MSG_MAX_LEN        4*1024*1024 //4m大小，考虑最大的i帧导致的video msg大小
 

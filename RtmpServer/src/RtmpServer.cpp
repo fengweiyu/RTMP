@@ -95,9 +95,9 @@ int RtmpServer::HandleRecvData(char *i_pcData,int i_iDataLen)
 * -----------------------------------------------
 * 2023/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-int RtmpServer::SendHandlePlayCmdResult(int i_iResult,char *i_strDescription)
+int RtmpServer::SendHandlePlayCmdResult(int i_iResult,const char *i_strDescription)
 {
-    return m_pRtmpSession->HandCmdPlaySendResult(i_iResult,i_strDescription);
+    return m_pRtmpSession->HandCmdPlaySendResult(i_iResult,(char *)i_strDescription);
 }
 
 /*****************************************************************************
@@ -110,7 +110,7 @@ int RtmpServer::SendHandlePlayCmdResult(int i_iResult,char *i_strDescription)
 * -----------------------------------------------
 * 2023/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-int RtmpServer::SendHandlePublishCmdResult(int i_iResult,char *i_strDescription)
+int RtmpServer::SendHandlePublishCmdResult(int i_iResult,const char *i_strDescription)
 {
     return m_pRtmpSession->HandCmdPublishSendResult(i_iResult,i_strDescription);
 }

@@ -47,9 +47,16 @@ typedef unsigned long long  uint64;
 #ifdef _WIN32
 #include <Windows.h>
 #define SleepMs(val) Sleep(val)
+#ifndef uint64
+typedef unsigned __int64   uint64;
+#endif
 #else
 #include <unistd.h>
+#include <stdint.h>
 #define SleepMs(val) usleep(val*1000)
+#ifndef uint64
+typedef uint64_t uint64;
+#endif
 #endif
 
 #define  Read16BE(ptr,val)     *val = ((unsigned char)ptr[0] << 8) | (unsigned char)ptr[1]

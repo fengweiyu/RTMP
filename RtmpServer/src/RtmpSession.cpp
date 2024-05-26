@@ -227,6 +227,7 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
     {
         return iRet;
     }
+    iRet = 0;
     if (false == m_blPlayStarted) //for metadata
     {
         if(RTMP_VIDEO_KEY_FRAME != i_ptRtmpMediaInfo->eFrameType)
@@ -679,6 +680,13 @@ int RtmpSession::HandleVideoMsg(unsigned int i_dwTimestamp,char * i_pcMsgPayload
             tRtmpMediaInfo.dwSampleRate = m_tPublishAudioParam.dwSamplesPerSecond;
             tRtmpMediaInfo.dwChannels = m_tPublishAudioParam.dwChannels;
             tRtmpMediaInfo.dwBitsPerSample = m_tPublishAudioParam.dwBitsPerSample;
+
+            tRtmpMediaInfo.wSpsLen=m_tPublishVideoParam.wSpsLen;
+            tRtmpMediaInfo.wPpsLen=m_tPublishVideoParam.wPpsLen;
+            tRtmpMediaInfo.wVpsLen=m_tPublishVideoParam.wVpsLen;
+            memcpy(tRtmpMediaInfo.abVPS,m_tPublishVideoParam.abVPS,tRtmpMediaInfo.wVpsLen);
+            memcpy(tRtmpMediaInfo.abSPS,m_tPublishVideoParam.abSPS,tRtmpMediaInfo.wSpsLen);
+            memcpy(tRtmpMediaInfo.abPPS,m_tPublishVideoParam.abPPS,tRtmpMediaInfo.wPpsLen);
             
             iRet = m_tRtmpCb.PushVideoData(&tRtmpMediaInfo,(char *)m_pbPublishFrameData,iVideoDataLen,m_pIoHandle);
             

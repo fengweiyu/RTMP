@@ -38,7 +38,7 @@ public:
     int PushStream(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath = NULL);//DoPlay
     int HandleRecvData(char *i_pcData,int i_iDataLen);//DoCycle
     
-    int SendHandlePlayCmdResult(int i_iResult,char *i_strDescription);//HandCmdPlaySendResult
+    int SendHandlePlayCmdResult(int i_iResult,const char *i_strDescription);//HandCmdPlaySendResult
     int SendHandlePublishCmdResult(int i_iResult,const char *i_strDescription);//HandCmdPublishSendResult
 
 private:
