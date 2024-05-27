@@ -355,7 +355,7 @@ int RtmpServerIO :: HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char 
     {
         case RTMP_VIDEO_KEY_FRAME:
         {
-            eFrameType = MEDIA_FRAME_TYPE_VIDEO_P_FRAME;
+            eFrameType = MEDIA_FRAME_TYPE_VIDEO_I_FRAME;
             break;
         }
         case RTMP_VIDEO_INNER_FRAME:
