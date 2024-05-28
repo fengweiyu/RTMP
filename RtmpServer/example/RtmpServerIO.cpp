@@ -77,6 +77,11 @@ RtmpServerIO :: RtmpServerIO(int i_iClientSocketFd)
 ******************************************************************************/
 RtmpServerIO :: ~RtmpServerIO()
 {
+    if(NULL!= m_pHandlePushMediaHandle)
+    {
+        delete m_pHandlePushMediaHandle;
+        m_pHandlePushMediaHandle = NULL;
+    }
     if(NULL!= m_pMediaHandle)
     {
         delete m_pMediaHandle;
@@ -266,19 +271,25 @@ int RtmpServerIO :: HandlePlayURL(const char * url)
 {
     int iRet = -1;
     string strURL(url);
-    auto dwTestPos = strURL.find("test/");
-    if(string::npos != dwTestPos)//"D:\\test\\2023AAC.flv"
+    auto dwPos = strURL.rfind("/");
+    if(string::npos != dwPos)//"D:\\test\\2023AAC.flv"
     {
         if(NULL != m_pFileName)
             delete m_pFileName;
-        m_pFileName = new string(strURL.substr(dwTestPos+strlen("test/")).c_str());
-        m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
+        m_pFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
+        //m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
         iRet = m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
         RTMPS_LOGW("m_pMediaHandle->Init %d,%s \r\n",iRet,m_pFileName->c_str());
         m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
 
         m_pMediaProc = new thread(&RtmpServerIO::MediaProc, this);
         //m_pMediaProc->detach();//注意线程回收
+        return iRet;
+    }
+    if(NULL == m_pFileName)
+    {
+        RTMPS_LOGE("m_pFileName %s err\r\n",url);
+        m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)url);
         return iRet;
     }
     m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
@@ -301,12 +312,12 @@ int RtmpServerIO :: HandlePushURL(const char * url)
     int iRet = -1;
     char strFileName[128]={0,};
     string strURL(url);
-    auto dwTestPos = strURL.find("test/");
-    if(string::npos != dwTestPos)//"D:\\test\\2023AAC.flv"
+    auto dwPos = strURL.rfind("/");
+    if(string::npos != dwPos)//"D:\\test\\2023AAC.flv"
     {
         if(NULL != m_pPushFileName)
             delete m_pPushFileName;
-        m_pPushFileName = new string(strURL.substr(dwTestPos+strlen("test/")).c_str());
+        m_pPushFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
         
         snprintf(strFileName,sizeof(strFileName),"%s.mp4",m_pPushFileName->c_str());//固定.h264文件
         m_pMediaFile = fopen(strFileName,"wb");//
@@ -316,8 +327,15 @@ int RtmpServerIO :: HandlePushURL(const char * url)
             m_pRtmpServer->SendHandlePublishCmdResult(iRet,m_pPushFileName->c_str());
             return iRet;
         } 
+        m_pHandlePushMediaHandle = new MediaHandle();
         m_pRtmpServer->SendHandlePublishCmdResult(0,NULL);
         return 0;
+    }
+    if(NULL == m_pPushFileName)
+    {
+        RTMPS_LOGE("m_pPushFileName %s err\r\n",url);
+        m_pRtmpServer->SendHandlePublishCmdResult(iRet,(char *)url);
+        return iRet;
     }
     m_pRtmpServer->SendHandlePublishCmdResult(iRet,(char *)m_pFileName->c_str());
     return iRet;
@@ -406,15 +424,31 @@ int RtmpServerIO :: HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char 
     tFileFrameInfo.dwSampleRate= i_ptRtmpMediaInfo->dwSampleRate;
     tFileFrameInfo.tAudioEncodeParam.dwBitsPerSample= i_ptRtmpMediaInfo->dwBitsPerSample;
     tFileFrameInfo.tAudioEncodeParam.dwChannels= i_ptRtmpMediaInfo->dwChannels;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->wSpsLen;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->wPpsLen;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->wVpsLen;
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,i_ptRtmpMediaInfo->abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,i_ptRtmpMediaInfo->abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,i_ptRtmpMediaInfo->abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);
-    tFileFrameInfo.pbFrameStartPos = (unsigned char *)i_acDataBuf;
-    tFileFrameInfo.iFrameLen = i_iDataLen;
-
+    
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->wSpsLen;//
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->wPpsLen;//
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->wVpsLen;//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,i_ptRtmpMediaInfo->abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,i_ptRtmpMediaInfo->abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,i_ptRtmpMediaInfo->abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);//
+    //tFileFrameInfo.pbFrameStartPos = (unsigned char *)i_acDataBuf;
+    //tFileFrameInfo.iFrameLen = i_iDataLen;
+    tFileFrameInfo.pbFrameBuf = (unsigned char *)i_acDataBuf;
+    tFileFrameInfo.iFrameBufLen = i_iDataLen;
+    tFileFrameInfo.iFrameBufMaxLen = i_iDataLen;
+    tFileFrameInfo.eStreamType=STREAM_TYPE_MUX_STREAM;
+    
+    if(NULL == m_pHandlePushMediaHandle)
+    {
+        RTMPS_LOGE("NULL == m_pHandlePushMediaHandle err iWriteLen %d\r\n",iWriteLen);
+        return iRet;
+    }
+    iRet=m_pHandlePushMediaHandle->GetFrame(&tFileFrameInfo);//annex-b的必须先解析成avcc的格式，所以要先调用这个接口进行分析
+    if(iRet < 0)
+    {
+        RTMPS_LOGE("GetFrame err %d\r\n",iWriteLen);
+        return iRet;
+    }
     iWriteLen = m_pMediaHandle->FrameToContainer(&tFileFrameInfo,STREAM_TYPE_FMP4_STREAM,m_pbFileBuf,RTMPS_FILE_BUF_MAX_LEN,&iHeaderLen);
     if(iWriteLen < 0)
     {

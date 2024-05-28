@@ -39,7 +39,7 @@ using std::mutex;
 * -----------------------------------------------
 * 2019/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-class RtmpServerIO : TcpServer
+class RtmpServerIO : public TcpServer
 {
 public:
 	RtmpServerIO(int i_iClientSocketFd);
@@ -74,6 +74,7 @@ private:
     thread * m_pRtmpServerIOProc;
 	int m_iRtmpServerIOFlag;
     MediaHandle *m_pMediaHandle;
+    MediaHandle *m_pHandlePushMediaHandle;
     thread * m_pMediaProc;
 	int m_iMediaProcFlag;
 
