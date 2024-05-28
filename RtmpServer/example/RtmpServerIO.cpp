@@ -84,7 +84,7 @@ RtmpServerIO :: ~RtmpServerIO()
     }
     if(NULL!= m_pRtmpServer)
     {
-        delete m_pMediaHandle;
+        delete m_pRtmpServer;
         m_pRtmpServer = NULL;
     }
     
@@ -401,7 +401,6 @@ int RtmpServerIO :: HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char 
     tFileFrameInfo.eEncType = eEncType;
     tFileFrameInfo.eFrameType = eFrameType;
     tFileFrameInfo.dwTimeStamp= (unsigned int)i_ptRtmpMediaInfo->ddwTimestamp;
-    tFileFrameInfo.dwTimeStamp= 25;
     tFileFrameInfo.dwHeight= i_ptRtmpMediaInfo->dwHeight;
     tFileFrameInfo.dwWidth = i_ptRtmpMediaInfo->dwWidth;
     tFileFrameInfo.dwSampleRate= i_ptRtmpMediaInfo->dwSampleRate;
