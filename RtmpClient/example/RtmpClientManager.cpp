@@ -110,10 +110,15 @@ int RtmpClientManager :: Proc(char *i_strURL)
         m_pFileName = new string(strURL.substr(dwPush+strlen("push/")).c_str());
     }
     auto dwPlay = strURL.find("play/");
-    if(string::npos != dwPush)//rtmp://10.10.10.10:10/push_10/Mnx8Y2UEdXTQ%3D%3D.9eaa64fa64a282
+    if(string::npos != dwPlay)//rtmp://10.10.10.10:10/push_10/Mnx8Y2UEdXTQ%3D%3D.9eaa64fa64a282
     {
         iPlayOrPublish=0;
         m_pFileName = new string(strURL.substr(dwPlay+strlen("play/")).c_str());
+    }
+    else
+    {
+        iPlayOrPublish=0;
+        m_pFileName = new string("tmp");
     }
     if(NULL == m_pFileName)
     {
@@ -125,7 +130,7 @@ int RtmpClientManager :: Proc(char *i_strURL)
     tRtmpClientCb.PlayAudioData = RtmpClientManager::HandlePlayAudioData;
     tRtmpClientCb.PlayScriptData = RtmpClientManager::HandlePlayScriptData;
 
-    if(0 == iPlayOrPublish)
+    if(0 != iPlayOrPublish)
     {
         m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
     }
@@ -133,7 +138,7 @@ int RtmpClientManager :: Proc(char *i_strURL)
     m_iProcFlag = 1;
     while(m_iProcFlag)
     {
-        if(0 == iPlayOrPublish)
+        if(0 != iPlayOrPublish)
         {
             iRet=this->MediaProc();//阻塞
             break;
@@ -178,7 +183,7 @@ int RtmpClientManager::MediaProc()
         iRet=m_pMediaHandle->GetFrame(&tFileFrameInfo);//非文件流可直接调用此接口
         if(iRet<0)
         {
-            RTMPC_LOGE("TestProc exit %d[%s]\r\n",iRet,m_pFileName->c_str());
+            RTMPC_LOGE("MediaProc exit %d[%s]\r\n",iRet,m_pFileName->c_str());
             break;
         }
         if(tFileFrameInfo.dwTimeStamp<dwFileLastTimeStamp)
@@ -290,7 +295,7 @@ int RtmpClientManager::Pushing(T_MediaFrameInfo * i_pFrame)
     tRtmpMediaInfo.dwSampleRate= i_pFrame->dwSampleRate;
     tRtmpMediaInfo.dwBitsPerSample= i_pFrame->tAudioEncodeParam.dwBitsPerSample;
     tRtmpMediaInfo.dwChannels= i_pFrame->tAudioEncodeParam.dwChannels;
-    return m_pRtmpClientIO->Pushing(&tRtmpMediaInfo,i_pFrame->pbFrameStartPos,i_pFrame->iFrameLen);
+    return m_pRtmpClientIO->Pushing(&tRtmpMediaInfo,i_pFrame->pbFrameStartPos,i_pFrame->iFrameLen,NULL);
 }
 
 /*****************************************************************************

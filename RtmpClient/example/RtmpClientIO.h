@@ -61,7 +61,7 @@ public:
         
 private:
     static int ConnectServer(void *i_pIoHandle,char * i_strIP,unsigned short i_wPort);
-    static int :SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen);
+    static int SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen);
     static long GetRandom();
 
                     

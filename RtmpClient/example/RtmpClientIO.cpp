@@ -149,7 +149,7 @@ int RtmpClientIO :: Start(char *i_strURL,T_RtmpClientCb i_tRtmpClientCb)
 
 
     m_iClientSocketFd = 0;
-    m_iRtmpClientIOFlag = 0;
+    m_iRtmpClientIOFlag = 1;//0
     m_pRtmpClientIOProc = new thread(&RtmpClientIO::Proc, this);
     //m_pRtmpClientIOProc->detach();//注意线程回收
     return 0;
@@ -333,8 +333,8 @@ int RtmpClientIO::ConnectServer(void *i_pIoHandle,char * i_strIP,unsigned short 
     }
 
     pRtmpClientIO = (RtmpClientIO *)i_pIoHandle;
-    
-    return pRtmpClientIO->Init(i_strIP,i_wPort);
+    string strIP(i_strIP);
+    return pRtmpClientIO->Init(&strIP,i_wPort);
 }
 
 /*****************************************************************************

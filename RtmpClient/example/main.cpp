@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
         PrintUsage(argv[0]);
         return iRet;
     }
-    RtmpClientManager *pRtmpClientManager = new RtmpClientManager(argv[1]);
-    iRet=pRtmpClientManager->Proc();//×èÈû
+    RtmpClientManager *pRtmpClientManager = new RtmpClientManager();
+    iRet=pRtmpClientManager->Proc(argv[1]);//×èÈû
     delete pRtmpClientManager;
     return iRet;
 }
