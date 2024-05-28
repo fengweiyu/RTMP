@@ -81,7 +81,7 @@ int RtmpPack::CreateS0S1S2(char *i_pcC1,int i_iC1Len,char *o_pcBuf,int i_iMaxBuf
     o_pcBuf[iDataLen] = RTMP_VERSION;
     iDataLen++;
     pcBuf = &o_pcBuf[iDataLen];
-    Write32BE(pcBuf,(unsigned int)time(NULL));
+    Write32BE(pcBuf,(unsigned int)GetSecCnt());
     iDataLen+=4;
     memset(&o_pcBuf[iDataLen],0,4);//memcpy(&o_pcBuf[iDataLen],i_pcC1,4);//SRS// s1 time2 copy from c1
     iDataLen+=4;
