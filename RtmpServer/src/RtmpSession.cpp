@@ -485,6 +485,7 @@ int RtmpSession::HandleRtmpMsg(unsigned char i_bMsgTypeID,unsigned int i_dwTimes
         case RTMP_MSG_TYPE_SET_CHUNK_SIZE:
         case RTMP_MSG_TYPE_ACKNOWLEDGEMENT:
         case RTMP_MSG_TYPE_WINDOW_ACK_SIZE:
+        case RTMP_MSG_TYPE_EVENT:
         {
             iRet = HandleControlMsg(i_bMsgTypeID,i_pcMsgPayload,i_iPayloadLen);
             break;
@@ -1037,7 +1038,10 @@ int RtmpSession::HandCmdPlaySendResult(int i_iResult,char *i_strDescription)
     tRtmpCmdOnStatus.blIsSuccess = 0 == i_iResult ? true : false;
     tRtmpCmdOnStatus.strSuccess ="NetStream.Play.Start";
     tRtmpCmdOnStatus.strFail= "NetStream.Play.Failed";
-    tRtmpCmdOnStatus.strDescription= "Start video on demand";
+    if(NULL != i_strDescription)
+        tRtmpCmdOnStatus.strDescription= i_strDescription;
+    else
+        tRtmpCmdOnStatus.strDescription= "Start video on demand";
     iRet = SendCmdOnStatus(&tRtmpCmdOnStatus);
 
     if(i_iResult != 0 ||0 != iRet)
@@ -1996,7 +2000,7 @@ int RtmpSession::Handshake(char *i_pcData,int i_iDataLen)
     //if (ComplexHandshake(i_pcData,i_iDataLen) < 0) //to do
     {
         iRet = SimpleHandshake(i_pcData,i_iDataLen);
-        if (iRet < 0) 
+        if (iRet < 0 && iRet != -2) 
         {
             RTMP_LOGE("Handshake err %d\r\n",iRet);
             return iRet;
@@ -2221,7 +2225,7 @@ int RtmpSession::HandleRtmpReq(char *i_pcData,int i_iDataLen)
         }
         else
         {
-            RTMP_LOGD("HandleRtmpMsg success %d ,dwLength %d ,iPacketLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen);
+            RTMP_LOGI("HandleRtmpMsg success %d ,dwLength %d ,iPacketLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen);
         }
         if(0 != m_tMsgBufHandle.iChunkHeaderLen)//i_pcData多个msg情况
         {//if(0!=m_tMsgBufHandle.iMsgBufLen)

@@ -1655,7 +1655,7 @@ int RtmpMediaHandle::GetVideoDataNalu(unsigned char *i_pbVideoData,int i_iDataLe
         iVideoDataLen += dwNaluLen+4;
         continue;
 #endif
-        m_ptRtmpFrameInfo->atNaluInfo[i].pbData = &o_pbVideoData[iVideoDataLen];
+        m_ptRtmpFrameInfo->atNaluInfo[i].pbData = &o_pbVideoData[iVideoDataLen];//应该放到下面参数nalu也是单独一个nalu
         if(m_ptRtmpFrameInfo->eFrameType == RTMP_VIDEO_KEY_FRAME && i == 0)//与ffmpeg h264_mp4toannexb一致
         {//只是第一个nalu前加,一个tag data 中nalu类型是一样的
             if(m_ptRtmpFrameInfo->wSpsLen > 0)
