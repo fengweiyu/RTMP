@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="src\AMF">
+      <UniqueIdentifier>{955a7b77-c76d-494b-ba0c-27a28e91ac77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\AMF\include">
+      <UniqueIdentifier>{539124ee-9397-4fed-8602-0a80bcb3441c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Include">
+      <UniqueIdentifier>{bf496a67-6b41-478d-bd00-80b9db53776b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\src\RtmpAdapter.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\RtmpCommon.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\RtmpMediaHandle.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\RtmpPack.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\RtmpParse.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\RtmpSession.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\Include\RtmpServer.h">
+      <Filter>src\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\src\AMF\include\amf0.h">
+      <Filter>src\AMF\include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\src\RtmpMediaHandle.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\RtmpPack.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\RtmpParse.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\RtmpServer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\RtmpSession.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\AMF\amf0.cpp">
+      <Filter>src\AMF</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

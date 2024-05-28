@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="example">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="example\net">
+      <UniqueIdentifier>{07a8290b-7dd2-42f0-bdad-4fce929394f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="example\net\include">
+      <UniqueIdentifier>{511c15e9-70eb-4c3f-b661-77de61334603}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\example\main.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\RtmpServerIO.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\RtmpServerManager.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\net\TcpSocketWin.cpp">
+      <Filter>example\net</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\example\RtmpServerIO.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\RtmpServerManager.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\net\include\NetAdapter.h">
+      <Filter>example\net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\net\include\TcpSocket.h">
+      <Filter>example\net\include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
