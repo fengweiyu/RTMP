@@ -17,6 +17,14 @@
 #include "RtmpPack.h"
 #include "RtmpParse.h"
 #include "RtmpMediaHandle.h"
+#include <string>
+#include <list>
+#include <map>
+
+using std::map;
+using std::make_pair;
+using std::string;
+
 
 #define RTMP_MSG_MAX_LEN        4*1024*1024 //4m大小，考虑最大的i帧导致的video msg大小
 
