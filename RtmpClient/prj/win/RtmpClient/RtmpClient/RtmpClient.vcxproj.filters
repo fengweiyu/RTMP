@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="src\Include">
+      <UniqueIdentifier>{aeb1c046-bc36-4e9c-99ac-febeb7359a3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="example">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="example\net">
+      <UniqueIdentifier>{d380f100-28eb-434f-bd15-32ce109271e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="example\net\include">
+      <UniqueIdentifier>{5c99da64-6ba0-423b-9549-4938cef4a199}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\src\Include\RtmpClient.h">
+      <Filter>src\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\RtmpClientIO.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\RtmpClientManager.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\net\include\NetAdapter.h">
+      <Filter>example\net\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\example\net\include\TcpSocket.h">
+      <Filter>example\net\include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\..\example\main.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\RtmpClientIO.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\RtmpClientManager.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\example\net\TcpSocketWin.cpp">
+      <Filter>example\net</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
