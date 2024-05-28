@@ -38,6 +38,7 @@ RtmpClientIO :: RtmpClientIO()
     m_iClientSocketFd = 0;
     m_iRtmpClientIOFlag = 0;
     m_pRtmpClientIOProc = NULL;
+    memset(&m_tRtmpClientCb,0,sizeof(T_RtmpClientCb));
 }
 
 /*****************************************************************************
@@ -62,16 +63,16 @@ RtmpClientIO :: RtmpClientIO(char *i_strURL,T_RtmpClientCb i_tRtmpClientCb)
     {
         iPlayOrPublish=1;
     }
-
+    memcpy(&m_tRtmpClientCb,&i_tRtmpClientCb,sizeof(T_RtmpClientCb));
     memset(&tRtmpCb,0,sizeof(T_RtmpCb));
-    tRtmpCb.PlayVideoData = i_tRtmpClientCb.PlayVideoData;
-    tRtmpCb.PlayAudioData = i_tRtmpClientCb.PlayAudioData;
-    tRtmpCb.PlayScriptData = i_tRtmpClientCb.PlayScriptData;
+    tRtmpCb.PlayVideoData = RtmpClientIO::HandlePlayVideoData;
+    tRtmpCb.PlayAudioData = RtmpClientIO::HandlePlayAudioData;
+    tRtmpCb.PlayScriptData = RtmpClientIO::HandlePlayScriptData;
     tRtmpCb.SendData = RtmpClientIO::SendData;
     tRtmpCb.Connect = RtmpClientIO::ConnectServer;
     tRtmpCb.tRtmpPackCb.GetRandom = RtmpClientIO::GetRandom;
 
-    m_RtmpClient.Start(iPlayOrPublish,i_strURL,&tRtmpCb);
+    m_RtmpClient.Start(this,iPlayOrPublish,i_strURL,&tRtmpCb);
     
 
 
@@ -135,16 +136,16 @@ int RtmpClientIO :: Start(char *i_strURL,T_RtmpClientCb i_tRtmpClientCb)
     {
         iPlayOrPublish=1;
     }
-
+    memcpy(&m_tRtmpClientCb,&i_tRtmpClientCb,sizeof(T_RtmpClientCb));
     memset(&tRtmpCb,0,sizeof(T_RtmpCb));
-    tRtmpCb.PlayVideoData = i_tRtmpClientCb.PlayVideoData;
-    tRtmpCb.PlayAudioData = i_tRtmpClientCb.PlayAudioData;
-    tRtmpCb.PlayScriptData = i_tRtmpClientCb.PlayScriptData;
+    tRtmpCb.PlayVideoData = RtmpClientIO::HandlePlayVideoData;
+    tRtmpCb.PlayAudioData = RtmpClientIO::HandlePlayAudioData;
+    tRtmpCb.PlayScriptData = RtmpClientIO::HandlePlayScriptData;
     tRtmpCb.SendData = RtmpClientIO::SendData;
     tRtmpCb.Connect = RtmpClientIO::ConnectServer;
     tRtmpCb.tRtmpPackCb.GetRandom = RtmpClientIO::GetRandom;
 
-    m_RtmpClient.Start(iPlayOrPublish,i_strURL,&tRtmpCb);
+    m_RtmpClient.Start(this,iPlayOrPublish,i_strURL,&tRtmpCb);
     
 
 
@@ -199,7 +200,7 @@ int RtmpClientIO :: Proc()
     RTMPC_LOGW("RtmpClientIO start Proc\r\n");
     while(m_iRtmpClientIOFlag)
     {
-        if(0 == m_iClientSocketFd)
+        if(m_iClientSocketFd <= 0)
         {
             iRet=m_RtmpClient.DoConnect();
             if(iRet<0)
@@ -377,5 +378,79 @@ int RtmpClientIO::SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen)
 long RtmpClientIO::GetRandom()
 {
     return rand();
+}
+/*****************************************************************************
+-Fuction        : PushVideoData
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpClientIO::HandlePlayVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle)
+{
+    int iRet = -1;
+    
+    if(NULL == i_ptRtmpMediaInfo ||NULL == i_acDataBuf ||NULL == i_pIoHandle)
+    {
+        RTMP_LOGE("HandlePlayVideoData NULL \r\n");
+        return iRet;
+    }
+    RtmpClientIO *pRtmpIO = (RtmpClientIO *)i_pIoHandle;
+    if(NULL == pRtmpIO ||NULL == pRtmpIO->m_tRtmpClientCb.PlayData||NULL == pRtmpIO->m_tRtmpClientCb.pIoHandle)
+    {
+        RTMP_LOGE("HandlePlayVideoData pRtmpIO NULL \r\n");
+        return iRet;
+    }
+    return pRtmpIO->m_tRtmpClientCb.PlayData(i_ptRtmpMediaInfo,i_acDataBuf,i_iDataLen,pRtmpIO->m_tRtmpClientCb.pIoHandle);
+}
+
+/*****************************************************************************
+-Fuction        : PushAudioData
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpClientIO::HandlePlayAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle)
+{
+    int iRet = -1;
+    
+    if(NULL == i_ptRtmpMediaInfo ||NULL == i_acDataBuf ||NULL == i_pIoHandle)
+    {
+        RTMP_LOGE("HandlePlayAudioData NULL \r\n");
+        return iRet;
+    }
+    RtmpClientIO *pRtmpIO = (RtmpClientIO *)i_pIoHandle;
+    if(NULL == pRtmpIO ||NULL == pRtmpIO->m_tRtmpClientCb.PlayData||NULL == pRtmpIO->m_tRtmpClientCb.pIoHandle)
+    {
+        RTMP_LOGE("HandlePlayVideoData pRtmpIO NULL \r\n");
+        return iRet;
+    }
+    return pRtmpIO->m_tRtmpClientCb.PlayData(i_ptRtmpMediaInfo,i_acDataBuf,i_iDataLen,pRtmpIO->m_tRtmpClientCb.pIoHandle);
+}
+
+/*****************************************************************************
+-Fuction        : HandlePushScriptData
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpClientIO::HandlePlayScriptData(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen)
+{
+    int iRet = -1;
+
+    RTMP_LOGD("HandlePlayScriptData %s \r\n",i_strStreamName);
+
+    return 0;
 }
 

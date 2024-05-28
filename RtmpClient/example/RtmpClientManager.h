@@ -39,10 +39,8 @@ public:
     int MediaProc();
     
 private:
-    static int HandlePlayVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
-    static int HandlePlayAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
-    static int HandlePlayScriptData(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen);
-
+    static int HandlePlayData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
+    
     int Pushing(T_MediaFrameInfo * i_pFrame);
     int HandlePlayMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen);
 
@@ -50,6 +48,7 @@ private:
 	int m_iProcFlag;
 	int m_iMediaProcFlag;
     MediaHandle *m_pMediaHandle;
+    MediaHandle *m_pHandlePushMediaHandle;
     string * m_pFileName;
     
     FILE  *m_pMediaFile;

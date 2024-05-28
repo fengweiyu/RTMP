@@ -33,9 +33,8 @@ using std::mutex;
 
 typedef struct RtmpClientCb
 {
-    int (*PlayVideoData)(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);//Annex-B格式裸流带00 00 00 01
-    int (*PlayAudioData)(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);//aac带7字节头
-    int (*PlayScriptData)(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen);
+    int (*PlayData)(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);//Annex-B格式裸流带00 00 00 01
+    void *pIoHandle;//aac带7字节头
 }T_RtmpClientCb;
 
 
@@ -46,7 +45,7 @@ typedef struct RtmpClientCb
 * -----------------------------------------------
 * 2019/09/21	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-class RtmpClientIO : TcpClient
+class RtmpClientIO : public TcpClient
 {
 public:
 	RtmpClientIO();
@@ -58,12 +57,15 @@ public:
     int StopAllProc();
     int GetProcFlag();
     int Pushing(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath);
-        
+    
+	T_RtmpClientCb m_tRtmpClientCb;
 private:
     static int ConnectServer(void *i_pIoHandle,char * i_strIP,unsigned short i_wPort);
     static int SendData(void *i_pIoHandle,char * i_acSendBuf,int i_iSendLen);
     static long GetRandom();
-
+    static int HandlePlayVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
+    static int HandlePlayAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);
+    static int HandlePlayScriptData(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen);
                     
 
     RtmpClient m_RtmpClient;

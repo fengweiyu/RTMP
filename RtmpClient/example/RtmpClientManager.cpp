@@ -45,6 +45,7 @@ RtmpClientManager :: RtmpClientManager()
         RTMPC_LOGE("NULL == m_pbFileBuf err\r\n");
     } 
     m_pRtmpClientIO = new RtmpClientIO();
+    m_pHandlePushMediaHandle = new MediaHandle();
 }
 
 /*****************************************************************************
@@ -59,6 +60,11 @@ RtmpClientManager :: RtmpClientManager()
 ******************************************************************************/
 RtmpClientManager :: ~RtmpClientManager()
 {
+    if(NULL!= m_pHandlePushMediaHandle)
+    {
+        delete m_pHandlePushMediaHandle;
+        m_pHandlePushMediaHandle = NULL;
+    }
     if(NULL!= m_pRtmpClientIO)
     {
         delete m_pRtmpClientIO;
@@ -126,9 +132,8 @@ int RtmpClientManager :: Proc(char *i_strURL)
         return -1;
     }
     memset(&tRtmpClientCb,0,sizeof(T_RtmpClientCb));
-    tRtmpClientCb.PlayVideoData = RtmpClientManager::HandlePlayVideoData;
-    tRtmpClientCb.PlayAudioData = RtmpClientManager::HandlePlayAudioData;
-    tRtmpClientCb.PlayScriptData = RtmpClientManager::HandlePlayScriptData;
+    tRtmpClientCb.PlayData = RtmpClientManager::HandlePlayData;
+    tRtmpClientCb.pIoHandle = this;
 
     if(0 != iPlayOrPublish)
     {
@@ -380,21 +385,36 @@ int RtmpClientManager :: HandlePlayMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,
     tFileFrameInfo.eEncType = eEncType;
     tFileFrameInfo.eFrameType = eFrameType;
     tFileFrameInfo.dwTimeStamp= (unsigned int)i_ptRtmpMediaInfo->ddwTimestamp;
-    tFileFrameInfo.dwTimeStamp= 25;
     tFileFrameInfo.dwHeight= i_ptRtmpMediaInfo->dwHeight;
     tFileFrameInfo.dwWidth = i_ptRtmpMediaInfo->dwWidth;
     tFileFrameInfo.dwSampleRate= i_ptRtmpMediaInfo->dwSampleRate;
     tFileFrameInfo.tAudioEncodeParam.dwBitsPerSample= i_ptRtmpMediaInfo->dwBitsPerSample;
     tFileFrameInfo.tAudioEncodeParam.dwChannels= i_ptRtmpMediaInfo->dwChannels;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->wSpsLen;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->wPpsLen;
-    tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->wVpsLen;
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,i_ptRtmpMediaInfo->abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,i_ptRtmpMediaInfo->abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);
-    memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,i_ptRtmpMediaInfo->abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);
-    tFileFrameInfo.pbFrameStartPos = (unsigned char *)i_acDataBuf;
-    tFileFrameInfo.iFrameLen = i_iDataLen;
-
+    
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS= i_ptRtmpMediaInfo->wSpsLen;//
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS= i_ptRtmpMediaInfo->wPpsLen;//
+    tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS= i_ptRtmpMediaInfo->wVpsLen;//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abVPS,i_ptRtmpMediaInfo->abVPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfVPS);//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abSPS,i_ptRtmpMediaInfo->abSPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfSPS);//
+    memcpy(tFileFrameInfo.tVideoEncodeParam.abPPS,i_ptRtmpMediaInfo->abPPS,tFileFrameInfo.tVideoEncodeParam.iSizeOfPPS);//
+    //tFileFrameInfo.pbFrameStartPos = (unsigned char *)i_acDataBuf;
+    //tFileFrameInfo.iFrameLen = i_iDataLen;
+    tFileFrameInfo.pbFrameBuf = (unsigned char *)i_acDataBuf;
+    tFileFrameInfo.iFrameBufLen = i_iDataLen;
+    tFileFrameInfo.iFrameBufMaxLen = i_iDataLen;
+    tFileFrameInfo.eStreamType=STREAM_TYPE_MUX_STREAM;
+    
+    if(NULL == m_pHandlePushMediaHandle)
+    {
+        RTMPC_LOGE("NULL == m_pHandlePushMediaHandle err iWriteLen %d\r\n",iWriteLen);
+        return iRet;
+    }
+    iRet=m_pHandlePushMediaHandle->GetFrame(&tFileFrameInfo);//annex-b的必须先解析成avcc的格式，所以要先调用这个接口进行分析
+    if(iRet < 0)
+    {
+        RTMPC_LOGE("GetFrame err %d\r\n",iWriteLen);
+        return iRet;
+    }
     iWriteLen = m_pMediaHandle->FrameToContainer(&tFileFrameInfo,STREAM_TYPE_FMP4_STREAM,m_pbFileBuf,RTMPC_FILE_BUF_MAX_LEN,&iHeaderLen);
     if(iWriteLen < 0)
     {
@@ -414,28 +434,7 @@ int RtmpClientManager :: HandlePlayMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,
 
     return iWriteLen;
 }
-/*****************************************************************************
--Fuction        : PushVideoData
--Description    : 
--Input          : 
--Output         : 
--Return         : 
-* Modify Date     Version        Author           Modification
-* -----------------------------------------------
-* 2023/09/21      V1.0.0         Yu Weifeng       Created
-******************************************************************************/
-int RtmpClientManager::HandlePlayVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle)
-{
-    int iRet = -1;
-    
-    if(NULL == i_ptRtmpMediaInfo ||NULL == i_acDataBuf ||NULL == i_pIoHandle)
-    {
-        RTMP_LOGE("HandlePlayVideoData NULL \r\n");
-        return iRet;
-    }
-    RtmpClientManager *pRtmpIO = (RtmpClientManager *)i_pIoHandle;
-    return pRtmpIO->HandlePlayMediaData(i_ptRtmpMediaInfo,i_acDataBuf,i_iDataLen);
-}
+
 
 /*****************************************************************************
 -Fuction        : PushAudioData
@@ -447,7 +446,7 @@ int RtmpClientManager::HandlePlayVideoData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,ch
 * -----------------------------------------------
 * 2023/09/21      V1.0.0         Yu Weifeng       Created
 ******************************************************************************/
-int RtmpClientManager::HandlePlayAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle)
+int RtmpClientManager::HandlePlayData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle)
 {
     int iRet = -1;
     
@@ -459,26 +458,6 @@ int RtmpClientManager::HandlePlayAudioData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,ch
     RtmpClientManager *pRtmpIO = (RtmpClientManager *)i_pIoHandle;
     return pRtmpIO->HandlePlayMediaData(i_ptRtmpMediaInfo,i_acDataBuf,i_iDataLen);
 }
-
-/*****************************************************************************
--Fuction        : HandlePushScriptData
--Description    : 
--Input          : 
--Output         : 
--Return         : 
-* Modify Date     Version        Author           Modification
-* -----------------------------------------------
-* 2023/09/21      V1.0.0         Yu Weifeng       Created
-******************************************************************************/
-int RtmpClientManager::HandlePlayScriptData(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen)
-{
-    int iRet = -1;
-
-    RTMP_LOGD("HandlePlayScriptData %s \r\n",i_strStreamName);
-
-    return 0;
-}
-
 
 
 
