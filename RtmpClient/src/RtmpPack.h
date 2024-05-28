@@ -113,6 +113,12 @@ typedef struct RtmpMediaInfo
     unsigned int dwBitsPerSample;
     //double dlVideoDatarate;//0.0
     //double dlFileSize;//0.0
+    unsigned short wSpsLen;
+    unsigned char abSPS[RTMP_SPS_MAX_SIZE];//°üº¬nalu type £¬È¥µôÁË00 00 00 01£¬
+    unsigned short wPpsLen;
+    unsigned char abPPS[RTMP_PPS_MAX_SIZE];
+    unsigned short wVpsLen;
+    unsigned char abVPS[RTMP_VPS_MAX_SIZE];
 }T_RtmpMediaInfo;
 
 typedef struct RtmpChunkPayloadInfo

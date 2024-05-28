@@ -666,6 +666,13 @@ int RtmpSession::HandleVideoMsg(unsigned int i_dwTimestamp,char * i_pcMsgPayload
             tRtmpMediaInfo.dwChannels = m_tPlayAudioParam.dwChannels;
             tRtmpMediaInfo.dwBitsPerSample = m_tPlayAudioParam.dwBitsPerSample;
             
+            tRtmpMediaInfo.wSpsLen=m_tPlayVideoParam.wSpsLen;
+            tRtmpMediaInfo.wPpsLen=m_tPlayVideoParam.wPpsLen;
+            tRtmpMediaInfo.wVpsLen=m_tPlayVideoParam.wVpsLen;
+            memcpy(tRtmpMediaInfo.abVPS,m_tPlayVideoParam.abVPS,tRtmpMediaInfo.wVpsLen);
+            memcpy(tRtmpMediaInfo.abSPS,m_tPlayVideoParam.abSPS,tRtmpMediaInfo.wSpsLen);
+            memcpy(tRtmpMediaInfo.abPPS,m_tPlayVideoParam.abPPS,tRtmpMediaInfo.wPpsLen);
+            
             iRet = m_tRtmpCb.PlayVideoData(&tRtmpMediaInfo,(char *)m_pbPlayFrameData,iVideoDataLen,m_pIoHandle);
             
         }
