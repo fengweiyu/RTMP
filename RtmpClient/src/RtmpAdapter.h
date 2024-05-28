@@ -46,6 +46,7 @@ typedef unsigned long long  uint64;
 #ifdef _WIN32
 #include <Windows.h>
 #define SleepMs(val) Sleep(val)
+#define GetSecCnt() (GetTickCount64()/1000) // 返回自系统启动以来的秒数
 #ifndef uint64
 typedef unsigned __int64   uint64;
 #endif
@@ -53,6 +54,7 @@ typedef unsigned __int64   uint64;
 #include <unistd.h>
 #include <stdint.h>
 #define SleepMs(val) usleep(val*1000)
+#define GetSecCnt() (time(NULL)) //返回的是从Epoch开始的秒数
 #ifndef uint64
 typedef uint64_t uint64;
 #endif

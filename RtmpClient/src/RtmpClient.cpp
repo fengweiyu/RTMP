@@ -58,7 +58,7 @@ RtmpClient::RtmpClient()
 * -----------------------------------------------
 * 2023/09/21      V1.0.0         Yu Weifeng       Created
 ******************************************************************************/
-RtmpClient::RtmpClient(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb)
+RtmpClient::RtmpClient(void *i_pIoHandle,int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb)
 {
     T_RtmpSessionConfig tRtmpSessionConfig;
     
@@ -71,7 +71,7 @@ RtmpClient::RtmpClient(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb
     tRtmpSessionConfig.iPlayOrPublish = i_iPlayOrPublish;
     snprintf(tRtmpSessionConfig.strURL,sizeof(tRtmpSessionConfig.strURL),"%s",i_strURL);
     
-    m_pRtmpSession = new RtmpSession(this,i_ptRtmpCb,&tRtmpSessionConfig);
+    m_pRtmpSession = new RtmpSession(i_pIoHandle,i_ptRtmpCb,&tRtmpSessionConfig);
 
 }
 
@@ -104,7 +104,7 @@ RtmpClient::~RtmpClient()
 * -----------------------------------------------
 * 2023/09/21      V1.0.0         Yu Weifeng       Created
 ******************************************************************************/
-int RtmpClient::Start(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb)
+int RtmpClient::Start(void *i_pIoHandle,int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb)
 {
     if(NULL != i_strURL && NULL == m_pRtmpSession)
     {
@@ -118,7 +118,7 @@ int RtmpClient::Start(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb)
         tRtmpSessionConfig.iPlayOrPublish = i_iPlayOrPublish;
         snprintf(tRtmpSessionConfig.strURL,sizeof(tRtmpSessionConfig.strURL),"%s",i_strURL);
         
-        m_pRtmpSession = new RtmpSession(this,i_ptRtmpCb,&tRtmpSessionConfig);
+        m_pRtmpSession = new RtmpSession(i_pIoHandle,i_ptRtmpCb,&tRtmpSessionConfig);
     }
 
     return 0;

@@ -26,11 +26,11 @@ class RtmpClient
 {
 public:
     RtmpClient();
-    RtmpClient(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb);
+    RtmpClient(void *i_pIoHandle,int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb);
     virtual ~RtmpClient();
     
 	
-    int Start(int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb);
+    int Start(void *i_pIoHandle,int i_iPlayOrPublish,char * i_strURL,T_RtmpCb *i_ptRtmpCb);
     int Stop(int err);
     int Pushing(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath = NULL);
     
