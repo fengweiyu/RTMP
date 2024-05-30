@@ -16,6 +16,7 @@
 #include "RtmpPack.h"
 #include "RtmpParse.h"
 #include "RtmpMediaHandle.h"
+#include <string.h>
 #include <map>
 #include <string>
 
@@ -27,6 +28,7 @@ using std::make_pair;
 #define RTMP_MSG_MAX_LEN        4*1024*1024 //4m大小，考虑最大的i帧导致的video msg大小
 #define RTMP_CHUNK_MAX_LEN        10*1024 //
 #define RTMP_PLAY_SRC_MAX_LEN RTMP_STREAM_NAME_MAX_LEN
+#define RTMP_CHUNK_MIN_LEN       5 //chunk header最大的大小，有的msg只有5字节,待长期验证
 
 typedef enum RtmpMediaType
 {
@@ -228,6 +230,7 @@ private:
 	unsigned int m_dwOffset;
     T_RtmpChunkHandle m_tRtmpChunkHandle;
     map<unsigned int, CRtmpMsg> m_RtmpMsgHandleMap;
+    int m_iChunkTcpRemainLen;//chunk 被tcp分包，如果外层一直读完tcp数据，不让tcp发生分包，则此变量相关的逻辑可删除
 
     unsigned char *m_pbFileData;
 	unsigned int m_dwFileBaseTimestamp = 0;
