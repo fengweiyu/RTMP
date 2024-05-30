@@ -49,7 +49,8 @@ int main(int argc, char* argv[])
 /*****************************************************************************
 -Fuction        : PrintUsage
 -Description    : 
-使用rtmp://10.10.22.121:9213/test/2024h264aac.flv 从服务器推流或拉流
+使用rtmp://10.10.22.121:9213/play/2024h264aac.flv 从服务器推流或
+rtmp://10.10.22.121:9213/push/2024h264aac.flv 拉流
 如果推流则会在程序目录下生成2024h264aac.mp4
 -Input          : 
 -Output         : 

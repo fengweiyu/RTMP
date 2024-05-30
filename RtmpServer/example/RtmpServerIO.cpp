@@ -145,7 +145,7 @@ int RtmpServerIO :: Proc()
         RTMPS_LOGE("RtmpServerIO m_iClientSocketFd < 0 err\r\n");
         return -1;
     }
-    pcRecvBuf = new char[RTMPS_RECV_MAX_LEN];
+    pcRecvBuf = new char[RTMPS_FRAME_BUF_MAX_LEN];
     if(NULL == pcRecvBuf)
     {
         RTMPS_LOGE("RtmpServerIO NULL == pcRecvBuf err\r\n");
@@ -157,9 +157,9 @@ int RtmpServerIO :: Proc()
     while(m_iRtmpServerIOFlag)
     {
         iRecvLen = 0;
-        memset(pcRecvBuf,0,RTMPS_RECV_MAX_LEN);
+        memset(pcRecvBuf,0,RTMPS_FRAME_BUF_MAX_LEN);
         milliseconds timeMS(30);// 表示30毫秒
-        iRet=TcpServer::Recv(pcRecvBuf,&iRecvLen,RTMPS_RECV_MAX_LEN,m_iClientSocketFd,&timeMS);
+        iRet=TcpServer::Recv(pcRecvBuf,&iRecvLen,RTMPS_FRAME_BUF_MAX_LEN,m_iClientSocketFd,&timeMS);
         if(iRet < 0)
         {
             RTMPS_LOGE("TcpServer::Recv err exit %d\r\n",iRecvLen);
@@ -277,7 +277,7 @@ int RtmpServerIO :: HandlePlayURL(const char * url)
         if(NULL != m_pFileName)
             delete m_pFileName;
         m_pFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
-        //m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
+        m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
         iRet = m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
         RTMPS_LOGW("m_pMediaHandle->Init %d,%s \r\n",iRet,m_pFileName->c_str());
         m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
@@ -358,8 +358,8 @@ int RtmpServerIO :: HandlePushMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char 
     int iWriteLen = -1;
     int iHeaderLen = -1;
     T_MediaFrameInfo tFileFrameInfo;
-    E_MediaEncodeType eEncType;
-    E_MediaFrameType eFrameType;
+    E_MediaEncodeType eEncType=MEDIA_ENCODE_TYPE_UNKNOW;
+    E_MediaFrameType eFrameType=MEDIA_FRAME_TYPE_UNKNOW;
 
     if(NULL == m_pPushFileName)//"D:\\test\\2023AAC.flv"
     {
