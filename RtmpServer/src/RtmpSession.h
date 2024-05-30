@@ -25,7 +25,7 @@ using std::make_pair;
 
 
 #define RTMP_MSG_MAX_LEN        4*1024*1024 //4m大小，考虑最大的i帧导致的video msg大小
-
+#define RTMP_CHUNK_MAX_LEN        10*1024 //
 #define RTMP_PLAY_SRC_MAX_LEN RTMP_STREAM_NAME_MAX_LEN
 
 typedef enum RtmpMediaType
@@ -51,6 +51,15 @@ typedef struct RtmpMsgBufHandle
     int iMsgBufLen;
 }T_RtmpMsgBufHandle;
 
+typedef struct RtmpChunkHandle
+{
+    T_RtmpChunkHeader tRtmpChunkHeader;
+    int iChunkHeaderLen;
+    char * pbChunkBuf;//pbChunkBuf包含Header
+    int iChunkCurLen;//iChunkCurLen包含Header
+    int iChunkMaxLen;
+}T_RtmpChunkHandle;
+
 
 typedef struct RtmpSessionConfig
 {
@@ -73,7 +82,42 @@ typedef struct RtmpCb
     int (*PushAudioData)(T_RtmpMediaInfo *i_ptRtmpMediaInfo,char * i_acDataBuf,int i_iDataLen,void *i_pIoHandle);//aac带7字节头
     int (*PushScriptData)(char *i_strStreamName,unsigned int i_dwTimestamp,char * i_acDataBuf,int i_iDataLen);
 }T_RtmpCb;
-
+/*****************************************************************************
+-Class          : RtmpSession
+-Description    : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+class CRtmpMsg
+{
+public:
+    CRtmpMsg()
+    {
+        pbMsgBuf = new char [RTMP_MSG_MAX_LEN];
+        memset(&tRtmpChunkHeader,0,sizeof(T_RtmpChunkHeader));
+        iChunkHeaderLen = 0;
+        iMsgBufLen = 0;
+    };
+    CRtmpMsg(const CRtmpMsg& other)
+    {
+        pbMsgBuf = new char [RTMP_MSG_MAX_LEN];
+        memcpy(pbMsgBuf,other.pbMsgBuf,other.iMsgBufLen);
+        memcpy(&tRtmpChunkHeader,&other.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+        iChunkHeaderLen = other.iChunkHeaderLen;
+        iMsgBufLen = other.iMsgBufLen;
+    }
+    virtual ~CRtmpMsg()
+    {
+        if(NULL != pbMsgBuf)
+            delete [] pbMsgBuf;
+    };
+    
+    T_RtmpChunkHeader tRtmpChunkHeader;
+    int iChunkHeaderLen;
+    char * pbMsgBuf;//map默认调用拷贝构造，如果没有定义则使用默认的浅拷贝，只拷贝指针不会拷贝内容
+    int iMsgBufLen;//即两个指针共用一块内存
+};
 /*****************************************************************************
 -Class          : RtmpSession
 -Description    : 
@@ -142,10 +186,12 @@ private:
     int SendData(char * i_acSendBuf,int i_iSendLen);
 
     int Handshake(char *i_pcData,int i_iDataLen);
+    int HandleRtmpRequest(char *i_pcData,int i_iDataLen);
     int HandleRtmpReq(char *i_pcData,int i_iDataLen);
     int HandleRtmpReqData(char *i_pcData,int i_iDataLen);
     int SimpleHandshake(char *i_pcData,int i_iDataLen);
     int ComplexHandshake(char *i_pcData,int i_iDataLen);
+    int ParseRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piProcessedLen);
     
 
     E_RtmpHandshakeState m_eHandshakeState;
@@ -180,8 +226,9 @@ private:
     
     T_RtmpCb m_tRtmpCb;
 	unsigned int m_dwOffset;
+    T_RtmpChunkHandle m_tRtmpChunkHandle;
+    map<unsigned int, CRtmpMsg> m_RtmpMsgHandleMap;
 
-	
     unsigned char *m_pbFileData;
 	unsigned int m_dwFileBaseTimestamp = 0;
 	unsigned int m_dwFileTimestamp = 0;

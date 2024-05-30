@@ -80,6 +80,19 @@ RtmpSession::RtmpSession(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionCon
     }
     memset(m_tMsgBufHandle.pbMsgBuf,0,RTMP_MSG_MAX_LEN);
     
+    memset(&m_tRtmpChunkHandle,0,sizeof(T_RtmpChunkHandle));
+    m_tRtmpChunkHandle.pbChunkBuf = new char[RTMP_CHUNK_MAX_LEN];
+    if(NULL == m_tRtmpChunkHandle.pbChunkBuf)
+    {
+        RTMP_LOGE("new pbChunkBuf err %d\r\n",RTMP_CHUNK_MAX_LEN);
+    }
+    else
+    {
+        m_tRtmpChunkHandle.iChunkMaxLen = RTMP_CHUNK_MAX_LEN;
+        memset(m_tRtmpChunkHandle.pbChunkBuf,0,RTMP_CHUNK_MAX_LEN);
+    }
+    m_RtmpMsgHandleMap.clear();
+    
     m_pRtmpParse = new RtmpParse();
     if(NULL == m_pRtmpParse)
     {
@@ -149,6 +162,11 @@ RtmpSession::~RtmpSession()
     {
         delete [] m_tMsgBufHandle.pbMsgBuf;
         m_tMsgBufHandle.pbMsgBuf = NULL;
+    }
+    if(NULL != m_tRtmpChunkHandle.pbChunkBuf)
+    {
+        delete [] m_tRtmpChunkHandle.pbChunkBuf;
+        memset(&m_tRtmpChunkHandle,0,sizeof(T_RtmpChunkHandle));
     }
     if(NULL != m_pbNaluData)
     {
@@ -1979,11 +1997,11 @@ int RtmpSession::DoCycle(char *i_pcData,int i_iDataLen)
         iHandledDataLen = Handshake(i_pcData,i_iDataLen);//只需先握手，后续有些命令不用按照顺序
         if(RTMP_HANDSHAKE_DONE == m_eHandshakeState && (i_iDataLen-iHandledDataLen) > 0)//处理tcp粘包问题
         {
-            iRet = HandleRtmpReq(i_pcData+iHandledDataLen,i_iDataLen-iHandledDataLen);
+            iRet = HandleRtmpRequest(i_pcData+iHandledDataLen,i_iDataLen-iHandledDataLen);
         }
         return iRet;
     }
-    return HandleRtmpReq(i_pcData,i_iDataLen);
+    return HandleRtmpRequest(i_pcData,i_iDataLen);
 }
 
 /*****************************************************************************
@@ -2043,6 +2061,251 @@ int RtmpSession::GetStopPlaySrc(char *o_pcData,int i_iMaxDataLen)
     memcpy(o_pcData,m_tRtmpPlayContent.strStreamName,strlen(m_tRtmpPlayContent.strStreamName));
     return strlen(m_tRtmpPlayContent.strStreamName);
 }
+
+/*****************************************************************************
+-Fuction        : HandleMsg
+-Description    : 先缓存一个完整的chunk包，再解析chunk并根据csid分配重组消息，最后再处理msg
+1.i_pcData中包含多个chunk 以及不带chunk头的数据，其中部分chunk组成1个msg
+2.i_pcData中包含多个chunk 以及不带chunk头的数据，但只组成1个msg
+3.i_pcData中包含多个chunk 以及不带chunk头的数据，不能组成1个msg
+4.i_pcData中包含1个chunk ，组成1个msg
+5.i_pcData中包含1个chunk ，不能组成1个msg
+6.i_pcData中只有不带chunk头的数据，也自然不能组成1个msg
+7.i_pcData中包含多个不同种类的chunk,分别组成不同的msg
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
+{
+    int iRet = -1;
+    T_RtmpChunkHeader tRtmpChunkHeader;
+    int iProcessedLen = 0;
+    char *pRtmpPacket = NULL;
+    int iPacketLen = 0;
+    char *pRtmpMsg = NULL;
+    int iChunkBodyLen = 0;
+    int iDiffLen = 0;
+    int iChunkHeaderLen = 0;
+
+    
+    if(NULL == i_pcData ||i_iDataLen <= 0)
+    {
+        RTMP_LOGE("HandleRtmpRequest NULL %d \r\n",i_iDataLen);
+        return iRet;
+    }
+    if(m_tRtmpChunkHandle.iChunkMaxLen < (int)m_tRtmpSessionConfig.dwInChunkSize)
+    {
+        RTMP_LOGE("m_tRtmpChunkHandle.iChunkMaxLen %d< (int)m_tRtmpSessionConfig.dwInChunkSize %d err \r\n",m_tRtmpChunkHandle.iChunkMaxLen,(int)m_tRtmpSessionConfig.dwInChunkSize);
+        return iRet;
+    }
+    m_dwRecvedDataLen += i_iDataLen;
+    (void)SendAcknowledgement(m_tRtmpSessionConfig.dwWindowSize);
+
+    pRtmpPacket = i_pcData;
+    iPacketLen = i_iDataLen;
+    while(iPacketLen > 0)//很可能pRtmpPacket包含多个msg
+    {
+        //先缓存一个完整的chunk包
+        iProcessedLen=0;
+        iRet = ParseRtmpDataToChunk(pRtmpPacket,iPacketLen,&iProcessedLen);
+        if(iRet < 0)//不是分包也不符合协议格式
+        {
+            RTMP_LOGE("ParseRtmpDataToChunk err exit %#x iChunkCurLen %d ,iPacketLen %d\r\n",(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,iPacketLen);
+            return -1;//数据错误最好要结束当前会话
+        }
+        pRtmpPacket += iProcessedLen;//1.iRet>0取出符合dwInChunkSize大小的chunk
+        iPacketLen -= iProcessedLen;
+        if(0 == iRet)
+        {
+            if(iPacketLen > 0)
+            {
+                continue;
+            }
+            //chunk body有可能小于dwInChunkSize，比如消息的最后一块
+            //(要区分是msg的某个chunk被tcp分包,还是msg的最后一个chunk或者是msg size<chunk size的情况)
+            RTMP_LOGD("0==iPacketLen dwInChunkSize %d,pbChunkBuf %#x iChunkCurLen %d ,iChunkHeaderLen %d\r\n",m_tRtmpSessionConfig.dwInChunkSize,
+            (unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,m_tRtmpChunkHandle.iChunkHeaderLen);
+            if(m_tRtmpChunkHandle.iChunkHeaderLen <= 0)
+            {
+                memset(&tRtmpChunkHeader,0,sizeof(T_RtmpChunkHeader));
+                iChunkHeaderLen = m_pRtmpParse->GetRtmpHeader(m_tRtmpChunkHandle.pbChunkBuf,m_tRtmpChunkHandle.iChunkCurLen,&tRtmpChunkHeader);
+                if(iChunkHeaderLen < 0)//不是分包也不符合协议格式
+                {
+                    RTMP_LOGE("m_pRtmpParse GetRtmpHeader err exit %#x iPacketLen %d ,iChunkHeaderLen %d\r\n",m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,iChunkHeaderLen);
+                    return -1;//数据错误最好要结束当前会话
+                }
+                memcpy(&m_tRtmpChunkHandle.tRtmpChunkHeader,&tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+                m_tRtmpChunkHandle.iChunkHeaderLen = iChunkHeaderLen;
+            }
+        }
+        
+        //一个(多个)完整的chunk包重组出一个完整的msg报文
+        RTMP_LOGD("HandleChunk %#x iChunkHeaderLen %d,iChunkCurLen %d iPacketLen %d,dwLength %d\r\n",(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],
+        m_tRtmpChunkHandle.iChunkHeaderLen,m_tRtmpChunkHandle.iChunkCurLen,iPacketLen,m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength);
+        if(m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength > RTMP_MSG_MAX_LEN)//
+        {
+            RTMP_LOGE("tMsgHeader.dwLength%d > RTMP_MSG_MAX_LEN%d err\r\n",m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength, RTMP_MSG_MAX_LEN);
+            return -1;//数据错误最好要结束当前会话
+        }
+        iChunkBodyLen = m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen;
+        do
+        {
+            if(iChunkBodyLen >= (int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength)//msg<chunk size
+            {
+                pRtmpMsg = m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen;
+                memcpy(&tRtmpChunkHeader,&m_tRtmpChunkHandle.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+                m_tRtmpChunkHandle.iChunkCurLen -= m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkHeaderLen=0;
+                break;
+            }
+            //msg由多个chunk组成
+            auto iter = m_RtmpMsgHandleMap.find(m_tRtmpChunkHandle.tRtmpChunkHeader.tBasicHeader.dwChunkStreamID);//用map的目的是同一msg chunk可能不按顺序达到的情况
+            if (iter == m_RtmpMsgHandleMap.end())
+            {//没找到则缓存当前的
+                CRtmpMsg cRtmpMsgBuf;
+                memcpy(&cRtmpMsgBuf.tRtmpChunkHeader,&m_tRtmpChunkHandle.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+                cRtmpMsgBuf.iChunkHeaderLen = m_tRtmpChunkHandle.iChunkHeaderLen;
+                memcpy(cRtmpMsgBuf.pbMsgBuf+cRtmpMsgBuf.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iChunkBodyLen);
+                cRtmpMsgBuf.iMsgBufLen+=iChunkBodyLen;
+                m_RtmpMsgHandleMap.insert(make_pair(m_tRtmpChunkHandle.tRtmpChunkHeader.tBasicHeader.dwChunkStreamID,cRtmpMsgBuf));
+                m_tRtmpChunkHandle.iChunkCurLen -= iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkHeaderLen=0;
+                break;
+            }
+            iDiffLen = (int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength-iter->second.iMsgBufLen;
+            if(iChunkBodyLen < iDiffLen)//msg还没缓存完整
+            {
+                memcpy(iter->second.pbMsgBuf+iter->second.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iChunkBodyLen);
+                iter->second.iMsgBufLen+=iChunkBodyLen;
+                m_tRtmpChunkHandle.iChunkCurLen -= iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkHeaderLen=0;
+                break;
+            }
+            pRtmpMsg = iter->second.pbMsgBuf;//用完释放
+            memcpy(pRtmpMsg+iter->second.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iDiffLen);
+            iter->second.iMsgBufLen+=iDiffLen;
+            memcpy(&tRtmpChunkHeader,&m_tRtmpChunkHandle.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+            m_tRtmpChunkHandle.iChunkCurLen -= iDiffLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+            m_tRtmpChunkHandle.iChunkHeaderLen=0;
+            
+            memset(&iter->second.tRtmpChunkHeader,0,sizeof(T_RtmpChunkHeader));
+            iter->second.iMsgBufLen=0;
+        }while(0);
+        if(pRtmpMsg == NULL)
+        {
+            iRet = 0;
+            continue;
+        }
+        iRet = HandleRtmpMsg(tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwTimestamp,pRtmpMsg,tRtmpChunkHeader.tMsgHeader.dwLength);
+        if(iRet < 0)
+        {
+            RTMP_LOGE("HandleRtmpMsg err %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
+        }
+        else
+        {
+            RTMP_LOGI("HandleRtmpMsg success %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
+        }
+        
+        pRtmpMsg = NULL;
+        if(m_tRtmpChunkHandle.iChunkCurLen > 0)
+        {
+            pRtmpPacket -= m_tRtmpChunkHandle.iChunkCurLen;
+            iPacketLen += m_tRtmpChunkHandle.iChunkCurLen;
+            m_tRtmpChunkHandle.iChunkCurLen = 0;
+        }
+    }
+
+    return iRet;
+}
+
+/*****************************************************************************
+-Fuction        : ParseRtmpDataToChunk
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpSession::ParseRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piProcessedLen)
+{
+    int iRet = -1;
+    int iProcessedLen = 0;
+    char *pRtmpPacket = NULL;
+    int iPacketLen = 0;
+    int iChunkHeaderLen = 0;
+    T_RtmpChunkHeader tRtmpChunkHeader;
+
+    pRtmpPacket = i_pcData;
+    iPacketLen = i_iDataLen;
+
+    if(0 == m_tRtmpChunkHandle.iChunkHeaderLen)
+    {
+        if(m_tRtmpChunkHandle.iChunkCurLen < (int)m_tRtmpSessionConfig.dwInChunkSize)//已有的还没缓存到一个chunk
+        {//m_tRtmpSessionConfig.dwInChunkSize不包含Header
+            if(iPacketLen < (int)m_tRtmpSessionConfig.dwInChunkSize-m_tRtmpChunkHandle.iChunkCurLen)//现在也还没缓存到一个chunk
+            {
+                iProcessedLen = iPacketLen;
+            }
+            else
+            {
+                iProcessedLen = (int)m_tRtmpSessionConfig.dwInChunkSize-m_tRtmpChunkHandle.iChunkCurLen;
+            }
+            memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
+            m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
+            pRtmpPacket += iProcessedLen;
+            iPacketLen -= iProcessedLen;
+            if(iPacketLen <= 0)
+            {
+                *o_piProcessedLen = iProcessedLen;
+                return 0;
+            }
+        }
+        memset(&tRtmpChunkHeader,0,sizeof(T_RtmpChunkHeader));
+        iChunkHeaderLen = m_pRtmpParse->GetRtmpHeader(m_tRtmpChunkHandle.pbChunkBuf,m_tRtmpChunkHandle.iChunkCurLen,&tRtmpChunkHeader);
+        if(iChunkHeaderLen < 0)//不是分包也不符合协议格式
+        {
+            RTMP_LOGE("GetRtmpHeader %d err ,exit %#x iChunkCurLen %d ,iPacketLen %d\r\n",iChunkHeaderLen,(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,iPacketLen);
+            return -1;//数据错误最好要结束当前会话
+        }
+        memcpy(&m_tRtmpChunkHandle.tRtmpChunkHeader,&tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
+        m_tRtmpChunkHandle.iChunkHeaderLen = iChunkHeaderLen;
+        
+        *o_piProcessedLen = iProcessedLen;
+        return 0;
+    }
+
+    //已经解析过头部
+    if(m_tRtmpChunkHandle.iChunkCurLen < (int)m_tRtmpSessionConfig.dwInChunkSize+m_tRtmpChunkHandle.iChunkHeaderLen)
+    {
+        if(iPacketLen < (int)m_tRtmpSessionConfig.dwInChunkSize+m_tRtmpChunkHandle.iChunkHeaderLen-m_tRtmpChunkHandle.iChunkCurLen)//现在也还没缓存到一个chunk
+        {
+            iProcessedLen = iPacketLen;
+        }
+        else
+        {
+            iProcessedLen = (int)m_tRtmpSessionConfig.dwInChunkSize+m_tRtmpChunkHandle.iChunkHeaderLen-m_tRtmpChunkHandle.iChunkCurLen;
+        }
+        memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
+        m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
+        pRtmpPacket += iProcessedLen;
+        iPacketLen -= iProcessedLen;
+        if(iPacketLen <= 0)
+        {
+            *o_piProcessedLen = iProcessedLen;
+            return 0;
+        }
+    }
+    
+    *o_piProcessedLen = iProcessedLen;
+    return iProcessedLen;
+}
+
 /*****************************************************************************
 -Fuction        : HandleMsg
 -Description    : 
