@@ -553,7 +553,8 @@ int RtmpSession::HandleCmdMsg(char * i_pcCmdMsgPayload,int i_iPayloadLen)
     HandleCmdMapIter = m_HandleCmdMap.find(strCommand);
     if(HandleCmdMapIter == m_HandleCmdMap.end())
     {
-        RTMP_LOGE("Can not find cmd %s \r\n",strCommand);
+        RTMP_LOGW("Can not find cmd %s \r\n",strCommand);
+        iRet=0;
     }
     else
     {
@@ -627,6 +628,8 @@ int RtmpSession::HandleControlMsg(unsigned char i_bMsgTypeID,char * i_pcMsgPaylo
         }
         default:
         {
+            RTMP_LOGW("unsupport i_bMsgTypeID %d \r\n",i_bMsgTypeID);
+            iRet = 0;
             break;
         }
     }
@@ -666,7 +669,7 @@ int RtmpSession::HandleVideoMsg(unsigned int i_dwTimestamp,char * i_pcMsgPayload
         }
         else if(iVideoDataLen == 0)
         {
-            RTMP_LOGD("GetVideoData need more data %d \r\n",iVideoDataLen);
+            RTMP_LOGI("GetVideoData need more data %d \r\n",iVideoDataLen);
             iRet = 0;
         }
         else
@@ -733,7 +736,7 @@ int RtmpSession::HandleAudioMsg(unsigned int i_dwTimestamp,char * i_pcMsgPayload
         }
         else if(iAudioDataLen == 0)
         {
-            RTMP_LOGD("GetAudioData need more data %d \r\n",iAudioDataLen);
+            RTMP_LOGI("GetAudioData need more data %d \r\n",iAudioDataLen);
             iRet = 0;
         }
         else
@@ -1015,7 +1018,7 @@ int RtmpSession::HandCmdPlaySendResult(int i_iResult,char *i_strDescription)
         return iRet;
     }
 
-    RTMP_LOGD("HandCmdPlaySendResult %d\r\n",i_iResult);
+    RTMP_LOGI("HandCmdPlaySendResult %d\r\n",i_iResult);
     // User Control (StreamBegin)
     //iRet = SendEventStreamBegin();//改为发完结果再发,失败则不发
     
@@ -1327,7 +1330,7 @@ int RtmpSession::SendCmdConnectReply(double i_dlEncoding)
         }
         else if(0 == iLen)
         {
-            RTMP_LOGD("CreateCmdReply over %d\r\n",iLen);
+            RTMP_LOGI("CreateCmdReply over %d\r\n",iLen);
         }
         else
         {
@@ -1386,7 +1389,7 @@ int RtmpSession::SendCmdCreateStreamReply(double i_dlTransaction)
         }
         else if(0 == iLen)
         {
-            RTMP_LOGD("CreateCmdReply over %d\r\n",iLen);
+            RTMP_LOGI("CreateCmdReply over %d\r\n",iLen);
         }
         else
         {
@@ -1610,11 +1613,11 @@ int RtmpSession::SendDataSampleAccess()
         iLen = m_pRtmpPack->CreateDataMsg(&tChunkPayloadInfo,abSendBuf,sizeof(abSendBuf));
         if(iLen < 0)
         {
-            RTMP_LOGE("CreateCmdReply err %d\r\n",iLen);
+            RTMP_LOGE("CreateDataMsg err %d\r\n",iLen);
         }
         else if(0 == iLen)
         {
-            RTMP_LOGD("CreateCmdReply over %d\r\n",iLen);
+            RTMP_LOGI("CreateDataMsg over %d\r\n",iLen);
         }
         else
         {
@@ -2329,7 +2332,7 @@ int RtmpSession::SimpleHandshake(char *i_pcData,int i_iDataLen)
             {
                 memcpy(m_abHandshakeBuf+m_iHandshakeBufLen,i_pcData,i_iDataLen);
                 m_iHandshakeBufLen+=i_iDataLen;
-                RTMP_LOGE("SimpleHandshake need more data %d\r\n",i_iDataLen);
+                RTMP_LOGW("SimpleHandshake need more data %d\r\n",i_iDataLen);
                 return -2;
             }
             if(0 != m_iHandshakeBufLen)
