@@ -67,6 +67,10 @@ RtmpServer::~RtmpServer()
 ******************************************************************************/
 int RtmpServer::PushStream(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath)
 {
+    if(NULL == m_pRtmpSession)
+    {
+        return -1;
+    }
     return m_pRtmpSession->DoPlay(i_ptRtmpMediaInfo,i_pbFrameData,i_iFrameLen,i_strPlayPath);
 }
 
