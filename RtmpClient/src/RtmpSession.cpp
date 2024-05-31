@@ -1620,7 +1620,7 @@ int RtmpSession::DoCycle(char *i_pcData,int i_iDataLen)
     }
     if(NULL != i_pcData && i_iDataLen > 0)
     {
-        iRet = HandleRtmpReq(i_pcData,i_iDataLen);
+        iRet = HandleRtmpRequest(i_pcData,i_iDataLen);
         m_dwRecvedDataLen += i_iDataLen ;
     }
     
