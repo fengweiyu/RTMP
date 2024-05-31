@@ -2132,8 +2132,8 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
             (unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,m_tRtmpChunkHandle.iChunkHeaderLen);
             if(m_tRtmpChunkHandle.iChunkCurLen < RTMP_CHUNK_MIN_LEN)//不足RTMP_CHUNK_MIN_LEN则头部被tcp分包，则不能解析头部
             {
-                RTMP_LOGW("m_tRtmpChunkHandle.iChunkCurLen < RTMP_CHUNK_MIN_LEN, dwInChunkSize %d,pbChunkBuf %#x iChunkCurLen %d %d ,iChunkHeaderLen %d\r\n",m_tRtmpSessionConfig.dwInChunkSize,
-                (unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkCurLen,RTMP_CHUNK_MIN_LEN,m_tRtmpChunkHandle.iChunkHeaderLen);
+                RTMP_LOGW("m_tRtmpChunkHandle.iChunkCurLen%d < RTMP_CHUNK_MIN_LEN%d, dwInChunkSize %d,pbChunkBuf %#x ,iChunkHeaderLen %d\r\n",m_tRtmpChunkHandle.iChunkCurLen,RTMP_CHUNK_MIN_LEN,
+                m_tRtmpSessionConfig.dwInChunkSize,(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],m_tRtmpChunkHandle.iChunkHeaderLen);
                 continue;
             }
             if(m_tRtmpChunkHandle.iChunkHeaderLen <= 0)
@@ -2151,8 +2151,8 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
         }
         
         //一个(多个)完整的chunk包重组出一个完整的msg报文
-        RTMP_LOGD("HandleChunk %#x,csid %d iChunkHeaderLen %d,iChunkCurLen %d iPacketLen %d,dwLength %d\r\n",(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],
-        m_tRtmpChunkHandle.tRtmpChunkHeader.tBasicHeader.dwChunkStreamID,m_tRtmpChunkHandle.iChunkHeaderLen,m_tRtmpChunkHandle.iChunkCurLen,iPacketLen,m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength);
+        RTMP_LOGD("HandleChunk %#x,csid %d iChunkCurLen %d iChunkHeaderLen %d, dwLength %d ,iPacketLen %d\r\n",(unsigned char)m_tRtmpChunkHandle.pbChunkBuf[0],
+        m_tRtmpChunkHandle.tRtmpChunkHeader.tBasicHeader.dwChunkStreamID,m_tRtmpChunkHandle.iChunkCurLen,m_tRtmpChunkHandle.iChunkHeaderLen,m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen);
         if(m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength > RTMP_MSG_MAX_LEN)//
         {
             RTMP_LOGE("tMsgHeader.dwLength%d > RTMP_MSG_MAX_LEN%d err\r\n",m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength, RTMP_MSG_MAX_LEN);
@@ -2253,9 +2253,14 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
         pRtmpMsg = NULL;
         if(m_tRtmpChunkHandle.iChunkCurLen > 0)
         {
-            pRtmpPacket -= m_tRtmpChunkHandle.iChunkCurLen;
-            iPacketLen += m_tRtmpChunkHandle.iChunkCurLen;
-            m_tRtmpChunkHandle.iChunkCurLen = 0;
+            if(i_iDataLen<m_tRtmpChunkHandle.iChunkCurLen)
+            {
+                RTMP_LOGI("i_iDataLen%d<m_tRtmpChunkHandle.iChunkCurLen%d\r\n",i_iDataLen,m_tRtmpChunkHandle.iChunkCurLen);
+                continue;
+            }
+            pRtmpPacket -= m_tRtmpChunkHandle.iChunkCurLen;//如果i_iDataLen<iPacketLen则不能回退
+            iPacketLen += m_tRtmpChunkHandle.iChunkCurLen;//如果不+=，则会退出循坏，然后socket又没数据过来，则流程走不下去了
+            m_tRtmpChunkHandle.iChunkCurLen = 0;//如果用iChunkCurLen做循环标记，则对于分包数据就无法得到处理了
         }
     }
 
