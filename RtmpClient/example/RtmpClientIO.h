@@ -56,6 +56,7 @@ public:
     int Proc();
     int StopAllProc();
     int GetProcFlag();
+    int GetPushingFlag();
     int Pushing(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath);
     
 	T_RtmpClientCb m_tRtmpClientCb;
@@ -73,6 +74,7 @@ private:
 
     thread * m_pRtmpClientIOProc;
 	int m_iRtmpClientIOFlag;
+	int m_iRtmpClientPushingFlag;
 };
 
 #endif

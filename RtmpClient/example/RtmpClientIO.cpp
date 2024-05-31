@@ -39,6 +39,7 @@ RtmpClientIO :: RtmpClientIO()
     m_iRtmpClientIOFlag = 0;
     m_pRtmpClientIOProc = NULL;
     memset(&m_tRtmpClientCb,0,sizeof(T_RtmpClientCb));
+    m_iRtmpClientPushingFlag = 0;
 }
 
 /*****************************************************************************
@@ -71,12 +72,9 @@ RtmpClientIO :: RtmpClientIO(char *i_strURL,T_RtmpClientCb i_tRtmpClientCb)
     tRtmpCb.SendData = RtmpClientIO::SendData;
     tRtmpCb.Connect = RtmpClientIO::ConnectServer;
     tRtmpCb.tRtmpPackCb.GetRandom = RtmpClientIO::GetRandom;
-
     m_RtmpClient.Start(this,iPlayOrPublish,i_strURL,&tRtmpCb);
     
-
-
-
+    m_iRtmpClientPushingFlag = 0;
 
 
 
@@ -235,6 +233,7 @@ int RtmpClientIO :: Proc()
                 Stop(0);
                 break;
             }
+            m_iRtmpClientPushingFlag = iRet;
             continue;
         }
         iRet=m_RtmpClient.DoCycle(pcRecvBuf,iRecvLen);
@@ -244,6 +243,7 @@ int RtmpClientIO :: Proc()
             Stop(0);
             break;
         }
+        m_iRtmpClientPushingFlag = iRet;
     }
     
     if(m_iClientSocketFd>=0)
@@ -295,6 +295,21 @@ int RtmpClientIO :: GetProcFlag()
         return 0;//多线程竞争注意优化
     }
     return -1;//多线程竞争注意优化
+}
+
+/*****************************************************************************
+-Fuction		: GetPushingFlag
+-Description	: RtmpClientIO
+-Input			: 
+-Output 		: 
+-Return 		: 
+* Modify Date	  Version		 Author 		  Modification
+* -----------------------------------------------
+* 2017/10/10	  V1.0.0		 Yu Weifeng 	  Created
+******************************************************************************/
+int RtmpClientIO :: GetPushingFlag()
+{
+    return m_iRtmpClientPushingFlag;//多线程竞争注意优化
 }
 
 /*****************************************************************************

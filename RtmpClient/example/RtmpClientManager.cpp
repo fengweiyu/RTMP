@@ -121,7 +121,7 @@ int RtmpClientManager :: Proc(char *i_strURL)
         iPlayOrPublish=0;
         m_pFileName = new string(strURL.substr(dwPlay+strlen("play/")).c_str());
     }
-    else
+    if(string::npos == dwPush && string::npos == dwPlay)
     {
         iPlayOrPublish=0;
         m_pFileName = new string("tmp");
@@ -145,8 +145,11 @@ int RtmpClientManager :: Proc(char *i_strURL)
     {
         if(0 != iPlayOrPublish)
         {
-            iRet=this->MediaProc();//阻塞
-            break;
+            if(m_pRtmpClientIO->GetPushingFlag()>0)
+            {
+                iRet=this->MediaProc();//阻塞
+                break;
+            }
         }
         if(m_pRtmpClientIO->GetProcFlag()<0)  
         {  
@@ -154,7 +157,7 @@ int RtmpClientManager :: Proc(char *i_strURL)
         } 
         else
         {
-            SleepMs(1000);
+            SleepMs(100);
         }
     }
     m_iProcFlag = 0;
@@ -206,7 +209,7 @@ int RtmpClientManager::MediaProc()
         if(iRet<0)
         {
             RTMPC_LOGE("Playing err exit %d[%s]\r\n",iRet,m_pFileName->c_str());
-            //break;//可能还没准备好，先不用返回，等待成功后再发，后续可优化为新增一个获取状态的接口
+            break;
         }
         dwFileLastTimeStamp = tFileFrameInfo.dwTimeStamp;
     }
