@@ -56,7 +56,7 @@ typedef struct RtmpMsgBufHandle
 {
     T_RtmpChunkHeader tRtmpChunkHeader;
     int iChunkHeaderLen;
-    char * pbMsgBuf;
+    char * pbMsgBuf;//RTMP_MSG_MAX_LEN
     int iMsgBufLen;
 }T_RtmpMsgBufHandle;
 

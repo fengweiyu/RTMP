@@ -535,7 +535,8 @@ int RtmpSession::HandleCmdMsg(char * i_pcCmdMsgPayload,int i_iPayloadLen)
     HandleCmdMapIter = m_HandleCmdMap.find(strCommand);
     if(HandleCmdMapIter == m_HandleCmdMap.end())
     {
-        RTMP_LOGE("Can not find cmd %s \r\n",strCommand);
+        RTMP_LOGW("Can not find cmd %s \r\n",strCommand);
+        iRet=0;
     }
     else
     {
