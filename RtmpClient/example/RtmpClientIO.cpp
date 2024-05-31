@@ -19,7 +19,7 @@
 using std::thread;
 
 #define RTMPC_RECV_MAX_LEN (10240)
-
+#define RTMPC_RECV_BUF_MAX_LEN	(2*1024*1024) 
 
 /*****************************************************************************
 -Fuction		: RtmpClientIO
@@ -189,7 +189,7 @@ int RtmpClientIO :: Proc()
     int iRecvLen=-1;
     int iConnectCnt = 0;
     
-    pcRecvBuf = new char[RTMPC_RECV_MAX_LEN];
+    pcRecvBuf = new char[RTMPC_RECV_BUF_MAX_LEN];
     if(NULL == pcRecvBuf)
     {
         RTMPC_LOGE("RtmpClientIO NULL == pcRecvBuf err\r\n");
@@ -218,9 +218,9 @@ int RtmpClientIO :: Proc()
         }
         
         iRecvLen = 0;
-        memset(pcRecvBuf,0,RTMPC_RECV_MAX_LEN);
+        memset(pcRecvBuf,0,RTMPC_RECV_BUF_MAX_LEN);
         milliseconds timeMS(10);// ±Ì æ30∫¡√Î
-        iRet=TcpClient::Recv(pcRecvBuf,&iRecvLen,RTMPC_RECV_MAX_LEN,m_iClientSocketFd,&timeMS);
+        iRet=TcpClient::Recv(pcRecvBuf,&iRecvLen,RTMPC_RECV_BUF_MAX_LEN,m_iClientSocketFd,&timeMS);
         if(iRet < 0)
         {
             RTMPC_LOGE("TcpClient::Recv err exit %d\r\n",iRecvLen);
