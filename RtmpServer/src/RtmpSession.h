@@ -28,7 +28,7 @@ using std::make_pair;
 #define RTMP_MSG_MAX_LEN        4*1024*1024 //4m大小，考虑最大的i帧导致的video msg大小
 #define RTMP_CHUNK_MAX_LEN        10*1024 //
 #define RTMP_PLAY_SRC_MAX_LEN RTMP_STREAM_NAME_MAX_LEN
-#define RTMP_CHUNK_MIN_LEN       15 //服务器拉流时必须处理15的报文,chunk header最大的大小18字节，有的msg只有5字节,待长期验证
+#define RTMP_CHUNK_MIN_LEN       12 //服务器拉流时必须处理最小12的报文(connect报文当ip为localhost时),chunk header最大的大小18字节，有的msg只有5字节,待长期验证
 
 typedef enum RtmpMediaType
 {
@@ -59,6 +59,7 @@ typedef struct RtmpChunkHandle
     int iChunkHeaderLen;
     char * pbChunkBuf;//pbChunkBuf包含Header
     int iChunkCurLen;//iChunkCurLen包含Header
+    int iChunkProcessedLen;//已处理的数据长度
     int iChunkMaxLen;
 }T_RtmpChunkHandle;
 

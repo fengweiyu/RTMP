@@ -2165,7 +2165,7 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
             {//发生tcp分包时，则说明这个不是单独的msg，则要走后面的代码分支，进行msg chunk tcp分包归并处理
                 pRtmpMsg = m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen;
                 memcpy(&tRtmpChunkHeader,&m_tRtmpChunkHandle.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
-                m_tRtmpChunkHandle.iChunkCurLen -= m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkProcessedLen = m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength+m_tRtmpChunkHandle.iChunkHeaderLen;
                 m_tRtmpChunkHandle.iChunkHeaderLen=0;
                 break;
             }
@@ -2179,7 +2179,7 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
                 memcpy(cRtmpMsgBuf.pbMsgBuf+cRtmpMsgBuf.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iChunkBodyLen);
                 cRtmpMsgBuf.iMsgBufLen+=iChunkBodyLen;
                 m_RtmpMsgHandleMap.insert(make_pair(m_tRtmpChunkHandle.tRtmpChunkHeader.tBasicHeader.dwChunkStreamID,cRtmpMsgBuf));
-                m_tRtmpChunkHandle.iChunkCurLen -= iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkProcessedLen = iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
                 m_tRtmpChunkHandle.iChunkHeaderLen=0;
                 if(iChunkBodyLen < (int)m_tRtmpSessionConfig.dwInChunkSize)//开始的msg包结果没有达到dwInChunkSize
                 {//则说明发生ChunkBody被tcp分包了，则需要特殊处理
@@ -2194,7 +2194,7 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
             {
                 memcpy(iter->second.pbMsgBuf+iter->second.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iChunkBodyLen);
                 iter->second.iMsgBufLen+=iChunkBodyLen;
-                m_tRtmpChunkHandle.iChunkCurLen -= iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+                m_tRtmpChunkHandle.iChunkProcessedLen = iChunkBodyLen+m_tRtmpChunkHandle.iChunkHeaderLen;
                 m_tRtmpChunkHandle.iChunkHeaderLen=0;
 
                 if(m_iChunkTcpRemainLen > 0)
@@ -2225,7 +2225,7 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
             memcpy(pRtmpMsg+iter->second.iMsgBufLen,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkHeaderLen,iDiffLen);
             iter->second.iMsgBufLen+=iDiffLen;
             memcpy(&tRtmpChunkHeader,&m_tRtmpChunkHandle.tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
-            m_tRtmpChunkHandle.iChunkCurLen -= iDiffLen+m_tRtmpChunkHandle.iChunkHeaderLen;
+            m_tRtmpChunkHandle.iChunkProcessedLen = iDiffLen+m_tRtmpChunkHandle.iChunkHeaderLen;
             m_tRtmpChunkHandle.iChunkHeaderLen=0;
             
             memset(&iter->second.tRtmpChunkHeader,0,sizeof(T_RtmpChunkHeader));
@@ -2238,29 +2238,35 @@ int RtmpSession::HandleRtmpRequest(char *i_pcData,int i_iDataLen)
         if(pRtmpMsg == NULL)
         {
             iRet = 0;
-            continue;
-        }
-        iRet = HandleRtmpMsg(tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwTimestamp,pRtmpMsg,tRtmpChunkHeader.tMsgHeader.dwLength);
-        if(iRet < 0)
-        {
-            RTMP_LOGE("HandleRtmpMsg err %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
         }
         else
         {
-            RTMP_LOGI("HandleRtmpMsg success %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
-        }
-        
-        pRtmpMsg = NULL;
-        if(m_tRtmpChunkHandle.iChunkCurLen > 0)
-        {
-            if(i_iDataLen<m_tRtmpChunkHandle.iChunkCurLen)
+            iRet = HandleRtmpMsg(tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwTimestamp,pRtmpMsg,tRtmpChunkHeader.tMsgHeader.dwLength);
+            if(iRet < 0)
             {
-                RTMP_LOGI("i_iDataLen%d<m_tRtmpChunkHandle.iChunkCurLen%d\r\n",i_iDataLen,m_tRtmpChunkHandle.iChunkCurLen);
+                RTMP_LOGE("HandleRtmpMsg err %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
+            }
+            else
+            {
+                RTMP_LOGI("HandleRtmpMsg success %d ,dwLength %d ,iPacketLen %d,iChunkCurLen %d\r\n",tRtmpChunkHeader.tMsgHeader.bTypeID,tRtmpChunkHeader.tMsgHeader.dwLength,iPacketLen,m_tRtmpChunkHandle.iChunkCurLen);
+            }
+            pRtmpMsg = NULL;
+        }
+        if(m_tRtmpChunkHandle.iChunkProcessedLen > 0)
+        {
+            int iRemainLen = m_tRtmpChunkHandle.iChunkCurLen -m_tRtmpChunkHandle.iChunkProcessedLen;
+            if(i_iDataLen<iRemainLen)
+            {
+                RTMP_LOGI("i_iDataLen%d<m_tRtmpChunkHandle.iChunkCurLen%d\r\n",i_iDataLen,iRemainLen);
+                memmove(m_tRtmpChunkHandle.pbChunkBuf,m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkProcessedLen,iRemainLen);
+                m_tRtmpChunkHandle.iChunkCurLen = iRemainLen;
+                m_tRtmpChunkHandle.iChunkProcessedLen = 0;
                 continue;
             }
-            pRtmpPacket -= m_tRtmpChunkHandle.iChunkCurLen;//如果i_iDataLen<iPacketLen则不能回退
-            iPacketLen += m_tRtmpChunkHandle.iChunkCurLen;//如果不+=，则会退出循坏，然后socket又没数据过来，则流程走不下去了
+            pRtmpPacket -= iRemainLen;//如果i_iDataLen<iPacketLen则不能回退
+            iPacketLen += iRemainLen;//如果不+=，则会退出循坏，然后socket又没数据过来，则流程走不下去了
             m_tRtmpChunkHandle.iChunkCurLen = 0;//如果用iChunkCurLen做循环标记，则对于分包数据就无法得到处理了
+            m_tRtmpChunkHandle.iChunkProcessedLen = 0;
         }
     }
 
