@@ -95,7 +95,7 @@ RtmpServerIO :: ~RtmpServerIO()
     
     if(NULL!= m_pRtmpServerIOProc)
     {
-        RTMPS_LOGW("HlsServerIO start exit\r\n");
+        RTMPS_LOGW("~m_pRtmpServerIOProc start exit\r\n");
         m_iRtmpServerIOFlag = 0;
         //while(0 == m_iExitProcFlag){usleep(10);};
         m_pRtmpServerIOProc->join();//
@@ -104,7 +104,7 @@ RtmpServerIO :: ~RtmpServerIO()
     }
     if(NULL!= m_pMediaProc)
     {
-        RTMPS_LOGW("HlsServerIO start exit\r\n");
+        RTMPS_LOGW("~m_pMediaProc start exit\r\n");
         m_iMediaProcFlag = 0;
         //while(0 == m_iExitProcFlag){usleep(10);};
         m_pMediaProc->join();//
@@ -121,7 +121,7 @@ RtmpServerIO :: ~RtmpServerIO()
         delete [] m_pbFileBuf;
         m_pbFileBuf = NULL;
     }
-    RTMPS_LOGW("~RtmpServerIO exit\r\n");
+    RTMPS_LOGW("~~RtmpServerIO exit\r\n");
 }
 
 /*****************************************************************************
@@ -145,7 +145,7 @@ int RtmpServerIO :: Proc()
         RTMPS_LOGE("RtmpServerIO m_iClientSocketFd < 0 err\r\n");
         return -1;
     }
-    pcRecvBuf = new char[RTMPS_RECV_MAX_LEN];
+    pcRecvBuf = new char[RTMPS_FRAME_BUF_MAX_LEN];
     if(NULL == pcRecvBuf)
     {
         RTMPS_LOGE("RtmpServerIO NULL == pcRecvBuf err\r\n");
@@ -157,9 +157,9 @@ int RtmpServerIO :: Proc()
     while(m_iRtmpServerIOFlag)
     {
         iRecvLen = 0;
-        memset(pcRecvBuf,0,RTMPS_RECV_MAX_LEN);
+        memset(pcRecvBuf,0,RTMPS_FRAME_BUF_MAX_LEN);
         milliseconds timeMS(30);// ±íÊ¾30ºÁÃë
-        iRet=TcpServer::Recv(pcRecvBuf,&iRecvLen,RTMPS_RECV_MAX_LEN,m_iClientSocketFd,&timeMS);
+        iRet=TcpServer::Recv(pcRecvBuf,&iRecvLen,RTMPS_FRAME_BUF_MAX_LEN,m_iClientSocketFd,&timeMS);
         if(iRet < 0)
         {
             RTMPS_LOGE("TcpServer::Recv err exit %d\r\n",iRecvLen);
