@@ -17,8 +17,8 @@
 
 static void PrintUsage(char *i_strProcName);
 
-const char * g_strPushURL="rtmp://10.10.22.121:9213/push/2024h264aac.flv";
-const char * g_strPlayURL="rtmp://10.10.22.121:9213/play/2024h264aac.flv";
+const char * g_strPushURL="rtmp://10.10.22.121:9213/push/h264aac.flv";
+const char * g_strPlayURL="rtmp://10.10.22.121:9213/play/h264aac.flv";
 
 /*****************************************************************************
 -Fuction        : main
