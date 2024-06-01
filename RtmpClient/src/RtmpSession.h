@@ -17,6 +17,7 @@
 #include "RtmpPack.h"
 #include "RtmpParse.h"
 #include "RtmpMediaHandle.h"
+#include <string.h>
 #include <string>
 #include <list>
 #include <map>
