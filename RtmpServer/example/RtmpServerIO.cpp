@@ -277,7 +277,10 @@ int RtmpServerIO :: HandlePlayURL(const char * url)
         if(NULL != m_pFileName)
             delete m_pFileName;
         m_pFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
-        m_pFileName->append(".flv");//固定.flv文件，url会过滤掉.后面数据所以需要手动加
+        if(string::npos == strURL.rfind(".flv"))//已经带了文件后缀的则不追加
+        {
+            m_pFileName->append(".flv");//固定.flv文件，ffmpeg url会过滤掉.flv.后面数据所以需要手动加
+        }
         iRet = m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
         RTMPS_LOGW("m_pMediaHandle->Init %d,%s \r\n",iRet,m_pFileName->c_str());
         m_pRtmpServer->SendHandlePlayCmdResult(iRet,(char *)m_pFileName->c_str());
