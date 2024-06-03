@@ -44,6 +44,15 @@ typedef enum RtmpHandshakeState
     RTMP_HANDSHAKE_C2,
     RTMP_HANDSHAKE_DONE,
 }E_RtmpHandshakeState;
+typedef enum RtmpChunkHandleState
+{
+    RTMP_CHUNK_HANDLE_INIT=0,
+    RTMP_CHUNK_HANDLE_BASIC_HEADER,
+    RTMP_CHUNK_HANDLE_MSG_HEADER,
+    RTMP_CHUNK_HANDLE_EX_TIMESTAMP,
+    RTMP_CHUNK_HANDLE_CHUNK_HEADER,
+    RTMP_CHUNK_HANDLE_CHUNK_BODY,
+}E_RtmpChunkHandleState;
 
 typedef struct RtmpMsgBufHandle
 {
@@ -61,6 +70,10 @@ typedef struct RtmpChunkHandle
     int iChunkCurLen;//iChunkCurLen包含Header
     int iChunkProcessedLen;//已处理的数据长度
     int iChunkMaxLen;
+    E_RtmpChunkHandleState eState;
+    int iChunkBasicHeaderLen;
+    int iChunkMsgHeaderLen;
+    int iChunkRemainLen;//chunk 被tcp分包，如果外层一直读完tcp数据，不让tcp发生分包，则此变量相关的逻辑可删除
 }T_RtmpChunkHandle;
 
 
@@ -189,12 +202,14 @@ private:
     int SendData(char * i_acSendBuf,int i_iSendLen);
 
     int Handshake(char *i_pcData,int i_iDataLen);
+    int HandleRtmpReqPacket(char *i_pcData,int i_iDataLen);
     int HandleRtmpRequest(char *i_pcData,int i_iDataLen);
     int HandleRtmpReq(char *i_pcData,int i_iDataLen);
     int HandleRtmpReqData(char *i_pcData,int i_iDataLen);
     int SimpleHandshake(char *i_pcData,int i_iDataLen);
     int ComplexHandshake(char *i_pcData,int i_iDataLen);
     int ParseRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piProcessedLen);
+    int HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piProcessedLen);
     
 
     E_RtmpHandshakeState m_eHandshakeState;
