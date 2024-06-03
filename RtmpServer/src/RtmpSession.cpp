@@ -2338,7 +2338,7 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
         }
         case RTMP_CHUNK_HANDLE_BASIC_HEADER:
         {
-            if (iPacketLen < m_tRtmpChunkHandle.iChunkBasicHeaderLen)
+            if (iPacketLen < (m_tRtmpChunkHandle.iChunkBasicHeaderLen-m_tRtmpChunkHandle.iChunkCurLen))
             {
                 iProcessedLen=iPacketLen;
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
@@ -2346,7 +2346,7 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
             }
             else
             {
-                iProcessedLen=m_tRtmpChunkHandle.iChunkBasicHeaderLen;
+                iProcessedLen=(m_tRtmpChunkHandle.iChunkBasicHeaderLen-m_tRtmpChunkHandle.iChunkCurLen);
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_MSG_HEADER;
@@ -2356,7 +2356,7 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
         }
         case RTMP_CHUNK_HANDLE_MSG_HEADER:
         {
-            if (iPacketLen < m_tRtmpChunkHandle.iChunkMsgHeaderLen)
+            if (iPacketLen < (m_tRtmpChunkHandle.iChunkBasicHeaderLen+m_tRtmpChunkHandle.iChunkMsgHeaderLen-m_tRtmpChunkHandle.iChunkCurLen))
             {
                 iProcessedLen=iPacketLen;
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
@@ -2364,7 +2364,7 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
             }
             else
             {
-                iProcessedLen=m_tRtmpChunkHandle.iChunkMsgHeaderLen;
+                iProcessedLen=(m_tRtmpChunkHandle.iChunkBasicHeaderLen+m_tRtmpChunkHandle.iChunkMsgHeaderLen-m_tRtmpChunkHandle.iChunkCurLen);
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_CHUNK_HEADER;
