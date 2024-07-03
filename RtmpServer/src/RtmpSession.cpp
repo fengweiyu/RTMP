@@ -2377,6 +2377,10 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
                         m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_EX_TIMESTAMP;
                     }
                 }
+                else if(0 == m_tRtmpChunkHandle.iChunkMsgHeaderLen)//特殊处理TYPE_3带扩展时间戳的问题
+                {//协议6.1.3.规定TYPE_3是不能带，但是微信小程序带了
+                    m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_EX_TIMESTAMP;
+                }
             }
             iRet = 0;
             break;
@@ -2410,7 +2414,11 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
             }
             memcpy(&m_tRtmpChunkHandle.tRtmpChunkHeader,&tRtmpChunkHeader,sizeof(T_RtmpChunkHeader));
             m_tRtmpChunkHandle.iChunkHeaderLen = iChunkHeaderLen;
-
+            if(m_tRtmpChunkHandle.iChunkHeaderLen > m_tRtmpChunkHandle.iChunkCurLen)
+            {
+                RTMP_LOGE("m_tRtmpChunkHandle.iChunkHeaderLen > m_tRtmpChunkHandle.iChunkCurLen %d ,%d\r\n",m_tRtmpChunkHandle.iChunkHeaderLen,m_tRtmpChunkHandle.iChunkCurLen);
+                return -1;//数据错误最好要结束当前会话
+            }
             m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_CHUNK_BODY;
             iRet = 0;
             break;
@@ -2425,18 +2433,18 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
                 iRet = iProcessedLen;
                 break;
             }
-            if (iPacketLen >= (int)m_tRtmpSessionConfig.dwInChunkSize)
+            if (iPacketLen >= (int)m_tRtmpSessionConfig.dwInChunkSize-(m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen))
             {
-                iProcessedLen=(int)m_tRtmpSessionConfig.dwInChunkSize;
+                iProcessedLen=(int)m_tRtmpSessionConfig.dwInChunkSize-(m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen);
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_INIT;
                 iRet = iProcessedLen;
                 break;
             }
-            if (iPacketLen >= (int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength)
+            if (iPacketLen >= (int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength-(m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen))
             {
-                iProcessedLen=(int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength;
+                iProcessedLen=(int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength-(m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen);
                 memcpy(m_tRtmpChunkHandle.pbChunkBuf+m_tRtmpChunkHandle.iChunkCurLen,pRtmpPacket,iProcessedLen);
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_INIT;
