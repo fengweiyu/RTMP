@@ -227,8 +227,10 @@ private:
     T_RtmpSessionConfig m_tRtmpSessionConfig;
     T_RtmpPlayContent m_tRtmpPlayContent;//strStreamName «ÕÍ’˚url
     char m_strTcURL[RTMP_PLAY_SRC_MAX_LEN];//
-    uint64 m_ddwLastTimestamp;
-    unsigned int m_dwTimestamp;
+    uint64 m_ddwLastVideoTimestamp;
+    uint64 m_ddwLastAudioTimeStamp;//ms
+    unsigned int m_dwVideoTimestamp;
+    unsigned int m_dwAudioTimestamp;
     char m_abHandshakeBuf[RTMP_C0_LEN+RTMP_C1_LEN];
     int m_iHandshakeBufLen;
     T_RtmpMsgBufHandle m_tMsgBufHandle;

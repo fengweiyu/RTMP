@@ -94,6 +94,8 @@ RtmpSession::RtmpSession(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionCon
     m_RtmpMsgHandleMap.clear();
     m_iChunkTcpRemainLen=0;
     
+    m_ddwLastVideoTimestamp=0;
+    m_ddwLastAudioTimeStamp=0;
     m_pRtmpParse = new RtmpParse();
     if(NULL == m_pRtmpParse)
     {
@@ -255,8 +257,8 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
             return iRet;
         }//出流慢是播放器缓存原因，播放器设置好可以1s出流ffplay -probesize 32 -analyzeduration 0 -i "rtmp://ip:port/(TcUrl)/StreamName"
         //SendDataOnMetaData(i_ptRtmpMediaInfo);//不发也可以正常播放,video msg中也带这些解码信息
-        m_ddwLastTimestamp = i_ptRtmpMediaInfo->ddwTimestamp;//ms
-        m_dwTimestamp = 0;
+        m_ddwLastVideoTimestamp = i_ptRtmpMediaInfo->ddwTimestamp;//ms
+        m_dwVideoTimestamp = 0;//音视频同源
         m_blAudioSeqHeaderSended = false;
         m_blPlayStarted = true;
         RTMP_LOGW("RTMP_VIDEO_KEY_FRAME start enc %d,frameType %d ,chan %d ,frameRate %d ,w %d h %d ,time %lld \r\n",i_ptRtmpMediaInfo->eEncType,i_ptRtmpMediaInfo->eFrameType,
@@ -269,8 +271,8 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
             case RTMP_ENC_H264:
             case RTMP_ENC_H265:
             {//实测，音视频时钟不同源,因此会导致时间戳不均匀
-                m_dwTimestamp += (unsigned int)(i_ptRtmpMediaInfo->ddwTimestamp - m_ddwLastTimestamp);//以视频的为准
-                m_ddwLastTimestamp = i_ptRtmpMediaInfo->ddwTimestamp;//ms
+                m_dwVideoTimestamp += (unsigned int)(i_ptRtmpMediaInfo->ddwTimestamp - m_ddwLastVideoTimestamp);//使用差值作为时间戳的增量
+                m_ddwLastVideoTimestamp = i_ptRtmpMediaInfo->ddwTimestamp;//从而保证时间戳的连续增长以及同步
             
                 memset(&tFrameInfo,0,sizeof(T_RtmpFrameInfo));
                 tFrameInfo.pbNaluData = m_pbNaluData;
@@ -290,10 +292,10 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
                         RTMP_LOGE("GenerateVideoData err %d \r\n",iVideoDataLen);
                         return -1;
                     }
-                    SendVideo(m_dwTimestamp,m_pbFrameData,iVideoDataLen);//必须分开发送，否则播放无法解析
+                    SendVideo(m_dwVideoTimestamp,m_pbFrameData,iVideoDataLen);//必须分开发送，否则播放无法解析
                 }
                 iVideoDataLen = m_pRtmpMediaHandle->GenerateVideoData(&tFrameInfo, 0,m_pbFrameData,RTMP_MSG_MAX_LEN);
-                SendVideo(m_dwTimestamp,m_pbFrameData,iVideoDataLen);
+                SendVideo(m_dwVideoTimestamp,m_pbFrameData,iVideoDataLen);
 
                 m_dwVideoFrameCntLog++;
                 if(m_dwVideoFrameCntLog < 3)
@@ -316,6 +318,13 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
         tRtmpAudioInfo.tParam.dwSamplesPerSecond = i_ptRtmpMediaInfo->dwSampleRate;
         tRtmpAudioInfo.pbAudioData= i_pbFrameData;
         tRtmpAudioInfo.dwAudioDataLen= i_iFrameLen;
+        if(0 == m_ddwLastAudioTimeStamp)
+        {
+            m_ddwLastAudioTimeStamp = i_ptRtmpMediaInfo->ddwTimestamp;//ms
+            m_dwAudioTimestamp=m_dwVideoTimestamp;//音视频同源
+        }
+        m_dwAudioTimestamp += (unsigned int)(i_ptRtmpMediaInfo->ddwTimestamp - m_ddwLastAudioTimeStamp);//以视频的为准
+        m_ddwLastAudioTimeStamp = i_ptRtmpMediaInfo->ddwTimestamp;//ms
         switch (i_ptRtmpMediaInfo->eEncType)
         {
             case RTMP_ENC_AAC:
@@ -323,7 +332,7 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
                 if(false == m_blAudioSeqHeaderSended)
                 {
                     iAudioDataLen = m_pRtmpMediaHandle->GenerateAudioData(&tRtmpAudioInfo, 1,m_pbFrameData,RTMP_MSG_MAX_LEN);
-                    SendAudio(m_dwTimestamp,m_pbFrameData,iAudioDataLen);
+                    SendAudio(m_dwAudioTimestamp,m_pbFrameData,iAudioDataLen);
                     m_blAudioSeqHeaderSended = true;
                     RTMP_LOGW("RTMP_ENC_AAC start enc %d,frameType %d ,chan %d ,SampleRate %d ,BitsPerSample %d,time %lld \r\n",i_ptRtmpMediaInfo->eEncType,i_ptRtmpMediaInfo->eFrameType,
                     i_ptRtmpMediaInfo->dwChannels,i_ptRtmpMediaInfo->dwSampleRate,i_ptRtmpMediaInfo->dwBitsPerSample,i_ptRtmpMediaInfo->ddwTimestamp);
@@ -331,7 +340,7 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
                 else
                 {
                     iAudioDataLen = m_pRtmpMediaHandle->GenerateAudioData(&tRtmpAudioInfo, 0,m_pbFrameData,RTMP_MSG_MAX_LEN);
-                    SendAudio(m_dwTimestamp,m_pbFrameData,iAudioDataLen);
+                    SendAudio(m_dwAudioTimestamp,m_pbFrameData,iAudioDataLen);
                 }
                 break;
             }
@@ -344,7 +353,7 @@ int RtmpSession::DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbF
                     i_ptRtmpMediaInfo->dwChannels,i_ptRtmpMediaInfo->dwSampleRate,i_ptRtmpMediaInfo->dwBitsPerSample,i_ptRtmpMediaInfo->ddwTimestamp);
                 }
                 iAudioDataLen = m_pRtmpMediaHandle->GenerateAudioData(&tRtmpAudioInfo, 0,m_pbFrameData,RTMP_MSG_MAX_LEN);
-                SendAudio(m_dwTimestamp,m_pbFrameData,iAudioDataLen);
+                SendAudio(m_dwAudioTimestamp,m_pbFrameData,iAudioDataLen);
                 break;
             }
             default:
@@ -1963,7 +1972,7 @@ int RtmpSession::SendData(char * i_acSendBuf,int i_iSendLen)
     //iRet = m_pTcpSocket->Send(i_acSendBuf,i_iSendLen,m_iClientSocketFd);
     if(iRet < 0)
     {
-        RTMP_LOGE("RtmpSession::SendData err");
+        RTMP_LOGE("RtmpSession::SendData err%d \r\n",iRet);
         iRet = -1;
     }
     else
