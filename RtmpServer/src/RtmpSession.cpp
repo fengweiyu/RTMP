@@ -106,7 +106,7 @@ RtmpSession::RtmpSession(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionCon
     {
         RTMP_LOGE("RtmpVersion RtmpPack err NULL\r\n");
     }
-    m_pRtmpMediaHandle = new RtmpMediaHandle();
+    m_pRtmpMediaHandle = new RtmpMediaHandle(1);
     if(NULL == m_pRtmpMediaHandle)
     {
         RTMP_LOGE("RtmpVersion RtmpMediaHandle err NULL\r\n");
