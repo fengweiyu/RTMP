@@ -460,11 +460,42 @@ int MediaHandle::FrameToContainer(T_MediaFrameInfo *i_ptFrame,E_StreamType i_eSt
         MH_LOGE("FrameToContainer o_pbBuf NULL\r\n");
         return iRet;
     }
-    if(STREAM_TYPE_FMP4_STREAM == i_eStreamType)
+    
+    switch(i_eStreamType)
     {
-        if(NULL == m_pMediaPackHandle)
+        case STREAM_TYPE_FMP4_STREAM :
         {
-            m_pMediaPackHandle=new FMP4HandleInterface();
+            if(NULL == m_pMediaPackHandle)
+            {
+                m_pMediaPackHandle=new FMP4HandleInterface();
+            }
+            break;
+        }
+        case STREAM_TYPE_FLV_STREAM :
+        case STREAM_TYPE_ENHANCED_FLV_STREAM :
+        {
+            if(NULL == m_pMediaPackHandle)
+            {
+                m_pMediaPackHandle=new FlvHandleInterface();
+            }
+            break;
+        }
+        case STREAM_TYPE_VIDEO_STREAM :
+        case STREAM_TYPE_AUDIO_STREAM :
+        {
+            if(i_ptFrame->iFrameLen > i_dwMaxBufLen)
+            {
+                MH_LOGE("i_ptFrame->iFrameLen > i_dwMaxBufLen err\r\n");
+                break;
+            }
+            memcpy(o_pbBuf,i_ptFrame->pbFrameStartPos,i_ptFrame->iFrameLen);
+            iRet = i_ptFrame->iFrameLen;
+            break;
+        }
+        default :
+        {
+            MH_LOGE("FrameToContainer i_eStreamType err%d\r\n",i_eStreamType);
+            break;
         }
     }
     if(NULL != m_pMediaPackHandle)
@@ -474,7 +505,7 @@ int MediaHandle::FrameToContainer(T_MediaFrameInfo *i_ptFrame,E_StreamType i_eSt
 
     if(iRet < 0)
     {
-        MH_LOGE("FrameToContainer FALSE:eStreamType%d,%d\r\n",i_eStreamType,i_dwMaxBufLen);
+        MH_LOGE("FrameToContainer FALSE:eStreamType%d,iFrameLen %d\r\n",i_eStreamType,i_ptFrame->iFrameLen);
     }
     
 	return iRet;
