@@ -1673,7 +1673,7 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
                 for (j = 0; j < numOfVideoParameterSets; j++)
                 {
                     lenOfVideoParameterSets = (pbVideoParams[0] << 8) | pbVideoParams[1];
-                    switch(nalutype & 0x3F)
+                    switch(nalutype)
                     {
                         case 32:
                         {//VPS
@@ -1693,6 +1693,10 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
                             memcpy(m_ptRtmpFrameInfo->abPPS,&pbVideoParams[2],m_ptRtmpFrameInfo->wPpsLen);
                             break;
                         }
+                        case 39:
+                        {//sei
+                            break;
+                        }
                         default:
                         {
                             RTMP_LOGE("nalutype & 0x3F err %d\r\n",nalutype & 0x3F);
@@ -1704,6 +1708,7 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
                     pbVideoParams += 2 + lenOfVideoParameterSets;
                 }
             }
+            m_ptRtmpFrameInfo->bNaluLenSize = tRtmpH265Extradata.lengthSizeMinusOne+1;
         }
     }
     else
