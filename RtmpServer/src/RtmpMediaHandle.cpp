@@ -19,10 +19,18 @@
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define BIT(ptr, off) (((ptr)[(off) / 8] >> (7 - ((off) % 8))) & 0x01)
+#define RTMP_TO_U32(a, b, c, d) (((a) << 24) | ((b) << 16) | ((c) << 8) | (d))
 
-
-
-
+#define RTMP_MEDIA_VIDEO_ENC_H265	RTMP_TO_U32('h', 'v', 'c', '1') //HEVC
+typedef enum
+{
+    RTMP_MEDIA_PACKET_TYPE_SEQUENCE_START=0,
+    RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES,
+    RTMP_MEDIA_PACKET_TYPE_SEQUENCE_END,
+    RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES_X,
+    RTMP_MEDIA_PACKET_TYPE_METADATA,
+    RTMP_MEDIA_PACKET_TYPE_MPEG2_TS_SEQUENCE_START,
+}E_RtmpMediaPacketType;
 
 
 /*****************************************************************************
@@ -37,10 +45,22 @@
 ******************************************************************************/
 RtmpMediaHandle::RtmpMediaHandle()
 {
+    m_iEnhancedFlag=0;
+}
 
-
-
-
+/*****************************************************************************
+-Fuction        : RtmpMediaHandle
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+RtmpMediaHandle::RtmpMediaHandle(int i_iEnhancedFlag)
+{
+    m_iEnhancedFlag=i_iEnhancedFlag;
 }
 
 /*****************************************************************************
@@ -654,27 +674,51 @@ int RtmpMediaHandle::GenerateVideoDataH265(T_RtmpFrameInfo * i_ptFrameInfo,int i
     }
     pbVideoData = o_pbVideoData;
     //tag Header 1 byte
-    if(RTMP_VIDEO_INNER_FRAME == i_ptFrameInfo->eFrameType)
+    if(0 == m_iEnhancedFlag)
     {
-        *pbVideoData = 0x2c;//微信小程序验证h265这种定义是可以的
-    }
-    if(RTMP_VIDEO_KEY_FRAME == i_ptFrameInfo->eFrameType)
-    {
-        *pbVideoData = 0x1c;
-    }
-    pbVideoData += 1;
-    //tag Body(AVCC Header) 4 byte
-    if(0 == i_iIsAvcSeqHeader)
-    {
-        *pbVideoData = 0x1;
+        if(RTMP_VIDEO_INNER_FRAME == i_ptFrameInfo->eFrameType)
+        {
+            *pbVideoData = 0x2c;//微信小程序验证h265这种定义是可以的
+        }
+        if(RTMP_VIDEO_KEY_FRAME == i_ptFrameInfo->eFrameType)
+        {
+            *pbVideoData = 0x1c;
+        }
+        pbVideoData += 1;
+        //tag Body(AVCC Header) 4 byte
+        if(0 == i_iIsAvcSeqHeader)
+        {
+            *pbVideoData = 0x1;
+        }
+        else
+        {
+            *pbVideoData = 0x0;//AvcSeqHeader
+        }
+        pbVideoData += 1;
+        memset(pbVideoData,0,3);
+        pbVideoData += 3;
     }
     else
     {
-        *pbVideoData = 0x0;//AvcSeqHeader
+        unsigned char eFlvPacketType=RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES_X;
+        *pbVideoData = 0x80;
+        if(RTMP_VIDEO_KEY_FRAME == i_ptFrameInfo->eFrameType)
+        {
+            *pbVideoData |= 0x10;
+        }
+        else
+        {
+            *pbVideoData |= 0x20;///1 = key frame, 2 = inter frame
+        }
+        if (0 != i_iIsAvcSeqHeader)//如果PacketType是PacketTypeSequenceStart，表示后续H265的数据内容是DecoderConfigurationRecord，也就是常说的sequence header;
+        {
+            eFlvPacketType=RTMP_MEDIA_PACKET_TYPE_SEQUENCE_START;
+        }
+        *pbVideoData |= eFlvPacketType;
+        pbVideoData += 1;
+        Write32BE(pbVideoData,RTMP_MEDIA_VIDEO_ENC_H265);
+        pbVideoData+=4;
     }
-    pbVideoData += 1;
-    memset(pbVideoData,0,3);
-    pbVideoData += 3;
     
     //tag Body(AVCC Body)
     if(0 == i_iIsAvcSeqHeader)
@@ -1384,62 +1428,137 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
     int i = 0,j = 0;
     unsigned int dwNaluLen = 0;
     unsigned char bNaluType = 0;
-    
+    unsigned char bIsExHeader = 0;
+    unsigned char * pbVideoTagHeader=NULL;
+    unsigned char bFrameType = 0;
+    unsigned char bCodecId = 0;
+    unsigned char bPacketType = 0;
+    unsigned int dwFourCC = 0;
+    int iCTS;        /// video composition time(PTS - DTS), AVC/HEVC/AV1 only
+
+
+
+
     if(NULL == i_pbVideoTag || NULL == m_ptRtmpFrameInfo || NULL == o_pbVideoData)
     {
         RTMP_LOGE("GetVideoData NULL %d\r\n", i_iTagLen);
         return -1;
     }
     //tag Header 1 byte
-    switch(i_pbVideoTag[iProcessedLen])
-    {
-        case 0x17:
-        {
-            m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_KEY_FRAME;
-            m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H264;
-            break;
-        }
-        case 0x27:
-        {
-            m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_INNER_FRAME;
-            m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H264;
-            break;
-        }
-        case 0x1c:
-        {
-            m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_KEY_FRAME;
-            m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H265;
-            break;
-        }
-        case 0x2c:
-        {
-            m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_INNER_FRAME;
-            m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H265;
-            break;
-        }
-        default:
-        {
-            m_ptRtmpFrameInfo->eFrameType = RTMP_UNKNOW_FRAME;
-            m_ptRtmpFrameInfo->eEncType = RTMP_UNKNOW_ENC_TYPE;
-            break;
-        }
-    }
-    if(RTMP_UNKNOW_ENC_TYPE == m_ptRtmpFrameInfo->eEncType)
-    {
-        RTMP_LOGE("ptRtmpFrameInfo->eEncType err %d\r\n",i_pbVideoTag[iProcessedLen]);//H265暂不支持,后续再做
-        return -1;
-    }
-    iProcessedLen++;
-
-    if(RTMP_ENC_H264 == m_ptRtmpFrameInfo->eEncType)
-    {
+    pbVideoTagHeader= &i_pbVideoTag[iProcessedLen];
+    bIsExHeader = ((i_pbVideoTag[iProcessedLen]>>7)&0x01);
+    if(0 == bIsExHeader)
+    {//如果bIsExHeader未使能， 还遵循之前的rtmp/flv传统规范
+        bFrameType = ((i_pbVideoTag[iProcessedLen]>>4)&0x0f);////1 = key frame, 2 = inter frame
+        bCodecId = (i_pbVideoTag[iProcessedLen]&0x0f);//4bits的codecId，H.264的值为7.
+        iProcessedLen++;
+        
         bIsAvcSeqHeader = i_pbVideoTag[iProcessedLen] == 0 ? 1:0;//tag Body(AVC packet type) 1 byte
         iProcessedLen++;
         //tag Body(AVC SeqHeader or AVC Raw)
-        int cts;        /// video composition time(PTS - DTS), AVC/HEVC/AV1 only
-        cts = (i_pbVideoTag[iProcessedLen] << 16) | (i_pbVideoTag[iProcessedLen+1] << 8) | i_pbVideoTag[iProcessedLen+2];
-        cts = (cts + 0xFF800000) ^ 0xFF800000; // signed 24-integer
+        iCTS = (i_pbVideoTag[iProcessedLen] << 16) | (i_pbVideoTag[iProcessedLen+1] << 8) | i_pbVideoTag[iProcessedLen+2];
+        iCTS = (iCTS + 0xFF800000) ^ 0xFF800000; // signed 24-integer
         iProcessedLen+=3;
+        switch(pbVideoTagHeader[0])
+        {
+            case 0x17:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_KEY_FRAME;
+                m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H264;
+                break;
+            }
+            case 0x27:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_INNER_FRAME;
+                m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H264;
+                break;
+            }
+            case 0x1c:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_KEY_FRAME;
+                m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H265;
+                break;
+            }
+            case 0x2c:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_INNER_FRAME;
+                m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H265;
+                break;
+            }
+            default:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_UNKNOW_FRAME;
+                m_ptRtmpFrameInfo->eEncType = RTMP_UNKNOW_ENC_TYPE;
+                break;
+            }
+        }
+    }
+    else
+    {// IsExHeader使能，表示Enhanced-Rtmp格式使能
+        bFrameType = ((i_pbVideoTag[iProcessedLen]>>4)&0x07);////1 = key frame, 2 = inter frame
+        bPacketType = (i_pbVideoTag[iProcessedLen]&0x0f);// 0 = PacketTypeSequenceStart // 1 = PacketTypeCodedFrames
+                                                   // 2 = PacketTypeSequenceEnd // 3 = PacketTypeCodedFramesX
+                                                   // 4 = PacketTypeMetadata // 5 = PacketTypeMPEG2TSSequenceStart
+        iProcessedLen++;
+        Read32BE((i_pbVideoTag + iProcessedLen),&dwFourCC);
+        iProcessedLen+=4;
+
+        if (bPacketType == RTMP_MEDIA_PACKET_TYPE_SEQUENCE_START)//如果PacketType是PacketTypeSequenceStart，表示后续H265的数据内容是DecoderConfigurationRecord，也就是常说的sequence header;
+        {
+            bIsAvcSeqHeader=1;
+        }
+        else if (bPacketType == RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES || bPacketType == RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES_X)
+        {
+            if (bPacketType == RTMP_MEDIA_PACKET_TYPE_CODED_FRAMES)
+            {
+                //如果PacketType是PacketTypeCodedFrames，就是pts与dts有差值
+                iCTS = (i_pbVideoTag[iProcessedLen] << 16) | (i_pbVideoTag[iProcessedLen+1] << 8) | i_pbVideoTag[iProcessedLen+2];//24bits，表示pts与dts的差值
+                iCTS = (iCTS + 0xFF800000) ^ 0xFF800000; // signed 24-integer
+                iProcessedLen+=3;
+            }
+            else //如果PacketType是PacketTypeCodedFramesX
+            {
+                //无CompositionTime，节省3字节的空间
+            }
+            //随后是正常的H265数据
+        }
+        if(dwFourCC != RTMP_MEDIA_VIDEO_ENC_H265)
+        {
+            RTMP_LOGE("dwFourCC err %x\r\n",dwFourCC);
+            m_ptRtmpFrameInfo->eEncType = RTMP_UNKNOW_ENC_TYPE;
+        }
+        else
+        {
+            m_ptRtmpFrameInfo->eEncType = RTMP_ENC_H265;
+        }
+        switch(bFrameType)
+        {
+            case 1:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_KEY_FRAME;
+                break;
+            }
+            case 2:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_VIDEO_INNER_FRAME;
+                break;
+            }
+            default:
+            {
+                m_ptRtmpFrameInfo->eFrameType = RTMP_UNKNOW_FRAME;
+                break;
+            }
+        }
+    }
+    
+    if(RTMP_UNKNOW_ENC_TYPE == m_ptRtmpFrameInfo->eEncType)
+    {
+        RTMP_LOGE("ptRtmpFrameInfo->eEncType err %d\r\n",i_pbVideoTag[iProcessedLen]);
+        return -1;
+    }
+
+    if(RTMP_ENC_H264 == m_ptRtmpFrameInfo->eEncType)
+    {
         if(0 == bIsAvcSeqHeader)
         {
             T_RtmpH265Extradata tRtmpH265Extradata;
@@ -1500,15 +1619,7 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
         }
     }
     else if(RTMP_ENC_H265 == m_ptRtmpFrameInfo->eEncType)
-    {        
-        bIsAvcSeqHeader = i_pbVideoTag[iProcessedLen] == 0 ? 1:0;//tag Body(AVC packet type) 1 byte
-        iProcessedLen++;
-        //tag Body(AVC SeqHeader or AVC Raw)
-        int cts;        /// video composition time(PTS - DTS), AVC/HEVC/AV1 only
-        cts = (i_pbVideoTag[iProcessedLen] << 16) | (i_pbVideoTag[iProcessedLen+1] << 8) | i_pbVideoTag[iProcessedLen+2];
-        cts = (cts + 0xFF800000) ^ 0xFF800000; // signed 24-integer
-        iProcessedLen+=3;
-        
+    {                
         T_RtmpH265Extradata tRtmpH265Extradata;
         if(0 == bIsAvcSeqHeader)
         {

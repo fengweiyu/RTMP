@@ -157,6 +157,7 @@ class RtmpMediaHandle
 {
 public:
     RtmpMediaHandle();
+    RtmpMediaHandle(int i_iEnhancedFlag);
     virtual ~RtmpMediaHandle();
     
     int ParseNaluFromFrame(E_RTMP_ENC_TYPE i_eEncType,unsigned char *i_pbVideoData,int i_iVideoDataLen,T_RtmpFrameInfo * o_ptFrameInfo);
@@ -195,6 +196,8 @@ private:
 
     unsigned char ParseAudioDataTagHeader(unsigned char i_bAudioTagHeader,T_RtmpAudioParam * o_ptRtmpAudioParam);
     int AddAdtsHeader(unsigned int i_dwSampleRate,unsigned int i_dwChannels,int i_iAudioRawDataLen,unsigned char *o_pbAudioData,int i_iDataMaxLen);
+
+    int m_iEnhancedFlag;//0 ·ñ£¬1ÊÇ
 };
 
 
