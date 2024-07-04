@@ -146,7 +146,8 @@ class RtmpSession
 public:
     RtmpSession(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionConfig *i_ptRtmpSessionConfig = NULL);
     virtual ~RtmpSession();
-
+    int SetEnhancedFlag(int i_iEnhancedFlag);
+    
     int DoCycle();
     int DoPlay(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath = NULL);
 

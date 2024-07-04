@@ -34,7 +34,8 @@ class RtmpServer
 public:
     RtmpServer(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionConfig *i_ptRtmpSessionConfig = NULL);
     virtual ~RtmpServer();
-
+    int SetEnhancedFlag(int i_iEnhancedFlag);
+    
     int PushStream(T_RtmpMediaInfo *i_ptRtmpMediaInfo,unsigned char * i_pbFrameData,int i_iFrameLen,char * i_strPlayPath = NULL);//DoPlay
     int HandleRecvData(char *i_pcData,int i_iDataLen);//DoCycle
     

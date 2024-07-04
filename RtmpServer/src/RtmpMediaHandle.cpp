@@ -76,8 +76,22 @@ RtmpMediaHandle::RtmpMediaHandle(int i_iEnhancedFlag)
 RtmpMediaHandle::~RtmpMediaHandle()
 {
 
+}
 
-
+/*****************************************************************************
+-Fuction        : SetEnhancedFlag
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpMediaHandle::SetEnhancedFlag(int i_iEnhancedFlag)
+{
+    m_iEnhancedFlag=i_iEnhancedFlag;
+    return 0;
 }
 
 /*****************************************************************************

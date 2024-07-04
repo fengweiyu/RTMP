@@ -106,7 +106,7 @@ RtmpSession::RtmpSession(void *i_pIoHandle,T_RtmpCb *i_ptRtmpCb,T_RtmpSessionCon
     {
         RTMP_LOGE("RtmpVersion RtmpPack err NULL\r\n");
     }
-    m_pRtmpMediaHandle = new RtmpMediaHandle(1);
+    m_pRtmpMediaHandle = new RtmpMediaHandle(1);//默认增强型h265打包方式
     if(NULL == m_pRtmpMediaHandle)
     {
         RTMP_LOGE("RtmpVersion RtmpMediaHandle err NULL\r\n");
@@ -196,6 +196,20 @@ RtmpSession::~RtmpSession()
     RTMP_LOGW("RTMP_AUDIO_FRAME end ,cnt %d\r\n",m_dwAudioFrameCntLog);
 }
 
+/*****************************************************************************
+-Fuction        : SetEnhancedFlag
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpSession::SetEnhancedFlag(int i_iEnhancedFlag)
+{
+    return m_pRtmpMediaHandle->SetEnhancedFlag(i_iEnhancedFlag);
+}
 /*****************************************************************************
 -Fuction        : DoCycle
 -Description    : 非阻塞,可优化为先接收到数据再调用这个

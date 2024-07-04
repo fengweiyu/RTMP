@@ -56,6 +56,21 @@ RtmpServer::~RtmpServer()
 }
 
 /*****************************************************************************
+-Fuction        : SetEnhancedFlag
+-Description    : 
+-Input          : 
+-Output         : 
+-Return         : 
+* Modify Date     Version        Author           Modification
+* -----------------------------------------------
+* 2023/09/21      V1.0.0         Yu Weifeng       Created
+******************************************************************************/
+int RtmpServer::SetEnhancedFlag(int i_iEnhancedFlag)
+{
+    return m_pRtmpSession->SetEnhancedFlag(i_iEnhancedFlag);
+}
+
+/*****************************************************************************
 -Fuction		: PushStream
 -Description	: ·Ç×èÈû
 -Input			: 
