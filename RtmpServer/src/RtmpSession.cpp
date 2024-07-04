@@ -2135,6 +2135,10 @@ int RtmpSession::HandleRtmpReqPacket(char *i_pcData,int i_iDataLen)
             {
                 continue;
             }
+            if(m_tRtmpChunkHandle.eState==RTMP_CHUNK_HANDLE_CHUNK_HEADER)
+            {//没有数据RTMP_CHUNK_HANDLE_CHUNK_HEADER状态还可以处理
+                continue;
+            }
             //chunk body有可能小于dwInChunkSize，比如消息的最后一块
             //(要区分是msg的某个chunk被tcp分包,还是msg的最后一个chunk或者是msg size<chunk size的情况)
             RTMP_LOGD("0==iPacketLen dwInChunkSize %d,pbChunkBuf %#x iChunkCurLen %d ,iChunkHeaderLen %d\r\n",m_tRtmpSessionConfig.dwInChunkSize,
@@ -2280,7 +2284,7 @@ int RtmpSession::HandleRtmpReqPacket(char *i_pcData,int i_iDataLen)
 -Description    : 
 -Input          : 
 -Output         : 
--Return         : 
+-Return         : >0 表示收集完，可以走下去处理报文了
 * Modify Date     Version        Author           Modification
 * -----------------------------------------------
 * 2023/09/21      V1.0.0         Yu Weifeng       Created
@@ -2299,7 +2303,7 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
     pRtmpPacket = i_pcData;
     iPacketLen = i_iDataLen;
 
-    if(NULL == i_pcData ||o_piProcessedLen == NULL ||i_iDataLen <= 0)
+    if(NULL == i_pcData ||o_piProcessedLen == NULL ||i_iDataLen < 0 ||(i_iDataLen == 0 && m_tRtmpChunkHandle.eState!=RTMP_CHUNK_HANDLE_CHUNK_HEADER))
     {
         RTMP_LOGE("HandleRtmpDataToChunk NULL %d \r\n",i_iDataLen);
         return iRet;
@@ -2449,7 +2453,9 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_INIT;
                 iRet = iProcessedLen;
-                break;
+                if(0 == iRet)//由于特殊处理TYPE_3带扩展时间戳的问题
+                    iRet = (m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen);//有时不是扩展时间戳的包已经放进了缓冲区,
+                break;//同时dwLength又很小，就会导致iProcessedLen=0即返回值为0，则报文得不到处理但eState又变了，所以要修改返回值
             }
             if (iPacketLen >= (int)m_tRtmpChunkHandle.tRtmpChunkHeader.tMsgHeader.dwLength-(m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen))
             {
@@ -2458,7 +2464,9 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
                 m_tRtmpChunkHandle.iChunkCurLen += iProcessedLen;
                 m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_INIT;
                 iRet = iProcessedLen;
-                break;
+                if(0 == iRet)//由于特殊处理TYPE_3带扩展时间戳的问题
+                    iRet = (m_tRtmpChunkHandle.iChunkCurLen-m_tRtmpChunkHandle.iChunkHeaderLen);//有时不是扩展时间戳的包已经放进了缓冲区,
+                break;//同时dwLength又很小，就会导致iProcessedLen=0即返回值为0，则报文得不到处理但eState又变了，所以要修改返回值
             }
             //发生tcp分包或者消息的最后一个chunk则由外部处理m_tRtmpChunkHandle.eState
             iProcessedLen=iPacketLen;
