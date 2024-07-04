@@ -208,6 +208,7 @@ RtmpSession::~RtmpSession()
 ******************************************************************************/
 int RtmpSession::SetEnhancedFlag(int i_iEnhancedFlag)
 {
+    RTMP_LOGI("SetEnhancedFlag %d \r\n",i_iEnhancedFlag);
     return m_pRtmpMediaHandle->SetEnhancedFlag(i_iEnhancedFlag);
 }
 /*****************************************************************************
