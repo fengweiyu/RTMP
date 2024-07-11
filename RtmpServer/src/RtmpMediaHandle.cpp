@@ -1950,9 +1950,9 @@ unsigned char RtmpMediaHandle::ParseAudioDataTagHeader(unsigned char i_bAudioTag
 	bEncType = (i_bAudioTagHeader & 0xF0) >> 4;
 	bSampleRateIndex = (i_bAudioTagHeader & 0x0C) >> 2;
 	bSampleBits = (i_bAudioTagHeader & 0x02) >> 1;
-	bChannels = i_bAudioTagHeader & 0x01;
+	bChannels = i_bAudioTagHeader & 0x01;//声道模式0 = 单声道,1 = 双声道（立体声）//aac 以AudioSpecCfg为准,这里aac都会置位1
 	
-    o_ptRtmpAudioParam->dwChannels = bChannels;
+    o_ptRtmpAudioParam->dwChannels = bChannels+1;//通道=声道+1 
     o_ptRtmpAudioParam->dwBitsPerSample = bSampleBits == 0b01 ? 16 : 8;
     o_ptRtmpAudioParam->dwSamplesPerSecond = 44000;
     if(bSampleRateIndex < 4)
