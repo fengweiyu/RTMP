@@ -2404,8 +2404,8 @@ int RtmpSession::HandleRtmpDataToChunk(char *i_pcData,int i_iDataLen,int *o_piPr
                     {
                         m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_EX_TIMESTAMP;
                     }
-                }
-                else if(0 == m_tRtmpChunkHandle.iChunkMsgHeaderLen)//特殊处理TYPE_3带扩展时间戳的问题
+                }//特殊处理TYPE_3带扩展时间戳的问题
+                else if(0 == m_tRtmpChunkHandle.iChunkMsgHeaderLen && (iPacketLen-iProcessedLen)>=4)//防止TYPE_3不带扩展时间戳的由于长度不够导致状态卡在HANDLE_EX_TIMESTAMP
                 {//协议6.1.3.规定TYPE_3是不能带，但是微信小程序带了
                     m_tRtmpChunkHandle.eState=RTMP_CHUNK_HANDLE_EX_TIMESTAMP;
                 }
