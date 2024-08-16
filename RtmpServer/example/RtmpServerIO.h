@@ -17,10 +17,11 @@
 #include "MediaHandle.h"
 #include <thread>
 #include <mutex>
+#include <list>
 
 using std::thread;
 using std::mutex;
-
+using std::list;
 
 
 #define  RTMPS_LOGW2(val,fmt,...)      printf("<%d>:"fmt,val,##__VA_ARGS__)
@@ -83,6 +84,9 @@ private:
     
     FILE  *m_pMediaFile;
     unsigned char *m_pbFileBuf;
+
+    list<T_MediaFrameInfo*> m_FrameList;//
+    int m_iPlayFindI;
 };
 
 #endif

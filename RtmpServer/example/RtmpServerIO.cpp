@@ -50,7 +50,7 @@ RtmpServerIO :: RtmpServerIO(int i_iClientSocketFd)
     tRtmpCb.tRtmpPackCb.GetRandom = RtmpServerIO::GetRandom;
     m_pRtmpServer = new RtmpServer(this,&tRtmpCb,NULL);
 
-    
+
     m_iRtmpServerIOFlag = 0;
     m_pRtmpServerIOProc = new thread(&RtmpServerIO::Proc, this);
     //m_pRtmpServerIOProc->detach();//注意线程回收
@@ -63,6 +63,9 @@ RtmpServerIO :: RtmpServerIO(int i_iClientSocketFd)
     {
         RTMPS_LOGE("NULL == m_pbFileBuf err\r\n");
     } 
+
+    m_iPlayFindI = 0;
+    m_FrameList.clear();
 }
 
 /*****************************************************************************
@@ -120,6 +123,13 @@ RtmpServerIO :: ~RtmpServerIO()
     {
         delete [] m_pbFileBuf;
         m_pbFileBuf = NULL;
+    }
+    for (; !m_FrameList.empty(); m_FrameList.pop_front())
+    {
+        auto it=m_FrameList.front();
+        T_MediaFrameInfo* ptListFrame=(T_MediaFrameInfo*)&(*it);
+        if(ptListFrame!=NULL)
+            delete ptListFrame;
     }
     RTMPS_LOGW("~~RtmpServerIO exit\r\n");
 }
@@ -509,9 +519,9 @@ int RtmpServerIO::MediaProc()
             break;
         }
         iSleepTimeMS=(int)(tFileFrameInfo.dwTimeStamp-dwFileLastTimeStamp);
-        if(iSleepTimeMS > 0)
-        {
-            SleepMs(iSleepTimeMS);//模拟实时流(直播)，点播和当前的处理机制不匹配，需要后续再开发
+        if(iSleepTimeMS > 50)
+        {//模拟实时流(直播)，点播和当前的处理机制不匹配，需要后续再开发
+            SleepMs(iSleepTimeMS-50);//直接使用iSleepTimeMS，vlc会提示到达时间晚了，并发生缓存导致卡顿
         }
         
         iRet=this->Playing(&tFileFrameInfo);
@@ -546,14 +556,34 @@ int RtmpServerIO::Playing(T_MediaFrameInfo * i_pFrame)
     E_RTMP_ENC_TYPE eRtmpEncType = RTMP_UNKNOW_ENC_TYPE;
     T_RtmpMediaInfo tRtmpMediaInfo;
     E_RTMP_FRAME_TYPE eFrameType = RTMP_UNKNOW_FRAME;
+    T_MediaFrameInfo * pFrame=NULL;
+    int iRet = -1;
     
     if(NULL == i_pFrame)
     {
         RTMP_LOGE("Playing NULL \r\n");
         return -1;
     }
-
-    switch (i_pFrame->eFrameType)
+    
+    if(0 == m_iPlayFindI && i_pFrame->eFrameType != MEDIA_FRAME_TYPE_VIDEO_I_FRAME)
+    {
+        RTMP_LOGE( "no FRAME_TYPE_VIDEO_I_FRAME [%d %d %d]", i_pFrame->eFrameType, i_pFrame->eEncType);
+        return -1;
+    }
+    if(0 == m_iPlayFindI && i_pFrame->eFrameType == MEDIA_FRAME_TYPE_VIDEO_I_FRAME)
+    {
+        m_iPlayFindI = 1;
+    }
+    pFrame=i_pFrame;
+    /*pFrame->AddRef();
+    m_FrameList.push_back(pFrame);
+    pFrame=(T_MediaFrameInfo*)m_FrameList.front();
+    if(i_pFrame->dwTimeStamp-pFrame->dwTimeStamp<100)
+    {//缓存100ms ,防止发送数据时间不均匀
+        return 0;
+    }
+    m_FrameList.pop_front();*/
+    switch (pFrame->eFrameType)
     {
         case MEDIA_FRAME_TYPE_VIDEO_I_FRAME:
         {
@@ -576,7 +606,7 @@ int RtmpServerIO::Playing(T_MediaFrameInfo * i_pFrame)
     }
 
     
-    switch (i_pFrame->eEncType)
+    switch (pFrame->eEncType)
     {
         case MEDIA_ENCODE_TYPE_H264:
         {
@@ -605,15 +635,17 @@ int RtmpServerIO::Playing(T_MediaFrameInfo * i_pFrame)
     memset(&tRtmpMediaInfo,0,sizeof(T_RtmpMediaInfo));
     tRtmpMediaInfo.eEncType = eRtmpEncType;
     tRtmpMediaInfo.eFrameType = eFrameType;
-    tRtmpMediaInfo.ddwTimestamp= i_pFrame->dwTimeStamp;
+    tRtmpMediaInfo.ddwTimestamp= pFrame->dwTimeStamp;
     tRtmpMediaInfo.dwFrameRate= 25;//内部不使用，暂时填默认值
-    tRtmpMediaInfo.dwHeight= i_pFrame->dwHeight;
-    tRtmpMediaInfo.dwWidth = i_pFrame->dwWidth;
+    tRtmpMediaInfo.dwHeight= pFrame->dwHeight;
+    tRtmpMediaInfo.dwWidth = pFrame->dwWidth;
     tRtmpMediaInfo.dlDuration= 0.0;
-    tRtmpMediaInfo.dwSampleRate= i_pFrame->dwSampleRate;
-    tRtmpMediaInfo.dwBitsPerSample= i_pFrame->tAudioEncodeParam.dwBitsPerSample;
-    tRtmpMediaInfo.dwChannels= i_pFrame->tAudioEncodeParam.dwChannels;
-    return m_pRtmpServer->PushStream(&tRtmpMediaInfo,i_pFrame->pbFrameStartPos,i_pFrame->iFrameLen);
+    tRtmpMediaInfo.dwSampleRate= pFrame->dwSampleRate;
+    tRtmpMediaInfo.dwBitsPerSample= pFrame->tAudioEncodeParam.dwBitsPerSample;
+    tRtmpMediaInfo.dwChannels= pFrame->tAudioEncodeParam.dwChannels;
+    iRet = m_pRtmpServer->PushStream(&tRtmpMediaInfo,pFrame->pbFrameStartPos,pFrame->iFrameLen);
+    //pFrame->Release();//缓存100ms ,防止发送数据时间不均匀
+    return iRet;
 }
 
 
