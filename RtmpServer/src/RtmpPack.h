@@ -35,7 +35,7 @@
 
 #define RTMP_FMSVER             "FMS/3,0,1,123"
 #define RTMP_CAPABILITIES       31
-#define RTMP_OUTPUT_CHUNK_SIZE     (1460-20) //最小128，mtu还要减去20 chunk头部大小
+#define RTMP_OUTPUT_CHUNK_SIZE  (1460-20) //默认128 ,最小128，mtu还要减去20 chunk头部大小
 #define RTMP_CMD_MAX_LEN        4096
 #define RTMP_DATA_MAX_LEN       4096
 
