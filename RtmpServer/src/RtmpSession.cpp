@@ -1784,6 +1784,31 @@ int RtmpSession::SendVideo(unsigned int i_dwTimestamp,unsigned char *i_pbVideoDa
     }while(iLen > 0);
     
     return iRet;
+
+    do
+    {
+        memset(abSendBuf,0,sizeof(abSendBuf));
+        iRet = m_pRtmpPack->CreateVideoMsg(i_dwTimestamp,&tChunkPayloadInfo,(char *)(m_pbPublishFrameData+iLen),RTMP_MSG_MAX_LEN-iLen);
+        if(iRet < 0)
+        {
+            RTMP_LOGE("CreateVideoMsg err %d\r\n",iLen);
+        }
+        else if(0 == iRet)
+        {
+            //RTMP_LOGD("CreateVideoMsg over %d\r\n",iLen);
+        }
+        else
+        {
+            iLen+=iRet;
+        }
+    }while(iRet > 0);
+    iRet = SendData((char *)m_pbPublishFrameData,iLen);
+    if(iRet < 0)
+    {
+        RTMP_LOGE("SendData err %d\r\n",iLen);
+        return iRet;
+    }
+    return iRet;
 }
 
 /*****************************************************************************
@@ -1837,6 +1862,31 @@ int RtmpSession::SendAudio(unsigned int i_dwTimestamp,unsigned char *i_pbAudioDa
         }
     }while(iLen > 0);
     
+    return iRet;
+
+    do
+    {
+        memset(abSendBuf,0,sizeof(abSendBuf));
+        iRet = m_pRtmpPack->CreateAudioMsg(i_dwTimestamp,&tChunkPayloadInfo,(char *)(m_pbPublishFrameData+iLen),RTMP_MSG_MAX_LEN-iLen);
+        if(iRet < 0)
+        {
+            RTMP_LOGE("CreateAudioMsg err %d\r\n",iLen);
+        }
+        else if(0 == iRet)
+        {
+            //RTMP_LOGD("CreateAudioMsg over %d\r\n",iLen);
+        }
+        else
+        {
+            iLen+=iRet;
+        }
+    }while(iRet > 0);
+    iRet = SendData((char *)m_pbPublishFrameData,iLen);
+    if(iRet < 0)
+    {
+        RTMP_LOGE("SendData err %d\r\n",iLen);
+        return iRet;
+    }
     return iRet;
 }
 
