@@ -13,7 +13,17 @@
 #ifndef RTMP_ADAPTER_H
 #define RTMP_ADAPTER_H
 
+typedef enum RtmpErrorCode
+{
+    RTMP_ERROR_CODE       = -2045000,    
+    RTMP_ERROR_KEY_FRAME_NO_SPS         = -2045100,    
+    RTMP_ERROR_KEY_FRAME_NO_VPS         = -2045101,    
+}E_RtmpErrorCode;
+#define  RTMP_RECV_DEV_STREAM "RTMP_RECV_DEV_STREAM"
 
+#define  RTMP_LOGW3(v1,v2,fmt,...)    printf("<%d,STEP:%s>:"fmt,v1,v2,##__VA_ARGS__)
+#define  RTMP_LOGE3(v1,v2,fmt,...)     printf("<%d,STEP:%s>:"fmt,v1,v2,##__VA_ARGS__)
+#define  RTMP_LOGD3(v1,v2,fmt,...)     printf("<%d,STEP:%s>:"fmt,v1,v2,##__VA_ARGS__)
 #define  RTMP_LOGW2(val,fmt,...)      printf("<%d>:"fmt,val,##__VA_ARGS__)
 #define  RTMP_LOGE2(val,fmt,...)      printf("<%d>:"fmt,val,##__VA_ARGS__)
 #define  RTMP_LOGD2(val,fmt,...)      printf("<%d>:"fmt,val,##__VA_ARGS__)
