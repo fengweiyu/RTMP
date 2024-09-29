@@ -282,14 +282,18 @@ int RtmpServerIO :: HandlePlayURL(const char * url)
     int iRet = -1;
     string strURL(url);
     auto dwPos = strURL.rfind("/");
-    if(string::npos != dwPos)//"D:\\test\\2023AAC.flv"
+    if(string::npos != dwPos)//rtmp://10.10.22.121:9213/play/h264aac.flv
     {
         if(NULL != m_pFileName)
             delete m_pFileName;
-        m_pFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
+        m_pFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());//rtmp://10.10.22.121:9213/play_enhanced/h265aac.flv
         if(string::npos == strURL.rfind(".flv"))//已经带了文件后缀的则不追加
         {
             m_pFileName->append(".flv");//固定.flv文件，ffmpeg url会过滤掉.flv.后面数据所以需要手动加
+        }
+        if(string::npos != strURL.rfind("_enhanced"))//
+        {
+            m_pRtmpServer->SetEnhancedFlag(1);//
         }
         iRet = m_pMediaHandle->Init((char *)m_pFileName->c_str());//默认取文件流
         RTMPS_LOGW("m_pMediaHandle->Init %d,%s \r\n",iRet,m_pFileName->c_str());
@@ -332,7 +336,7 @@ int RtmpServerIO :: HandlePushURL(const char * url)
             delete m_pPushFileName;
         m_pPushFileName = new string(strURL.substr(dwPos+strlen("/")).c_str());
         
-        snprintf(strFileName,sizeof(strFileName),"%s.mp4",m_pPushFileName->c_str());//固定.h264文件
+        snprintf(strFileName,sizeof(strFileName),"%s.mp4",m_pPushFileName->c_str());///work/share/rtmp/%s.mp4
         m_pMediaFile = fopen(strFileName,"wb");//
         if(NULL == m_pMediaFile)
         {
@@ -568,7 +572,7 @@ int RtmpServerIO::Playing(T_MediaFrameInfo * i_pFrame)
     if(0 == m_iPlayFindI && i_pFrame->eFrameType != MEDIA_FRAME_TYPE_VIDEO_I_FRAME)
     {
         RTMP_LOGE( "no FRAME_TYPE_VIDEO_I_FRAME [%d %d %d]", i_pFrame->eFrameType, i_pFrame->eEncType);
-        return -1;
+        return 0;
     }
     if(0 == m_iPlayFindI && i_pFrame->eFrameType == MEDIA_FRAME_TYPE_VIDEO_I_FRAME)
     {

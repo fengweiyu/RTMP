@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 {
     int iRet = -1;
     
-    int dwServerPort=9213;
+    int dwServerPort=9216;
     
     if(argc !=2)
     {
@@ -49,8 +49,9 @@ int main(int argc, char* argv[])
 /*****************************************************************************
 -Fuction        : PrintUsage
 -Description    : 
-使用rtmp://10.10.22.121:9213/play/h264aac.flv 从服务器推流或
-rtmp://10.10.22.121:9213/push/h264aac.flv 拉流
+使用rtmp://10.10.22.121:9216/play/h264aac.flv 从服务器推流或
+rtmp://10.10.22.121:9216/play_enhanced/h265aac.flv
+rtmp://10.10.22.121:9216/push/h264aac.flv 拉流
 如果推流则会在程序目录下生成2024h264aac.mp4
 -Input          : 
 -Output         : 
@@ -62,6 +63,9 @@ rtmp://10.10.22.121:9213/push/h264aac.flv 拉流
 static void PrintUsage(char *i_strProcName)
 {
     printf("Usage: %s ServerPort \r\n",i_strProcName);
-    printf("run default args: %s 9213 \r\n",i_strProcName);
+    printf("run default args: %s 9216 \r\n",i_strProcName);
+    printf("play url eg: %s\r\n","rtmp://localhost:9216/play/h264aac.flv");
+    printf("play url eg: %s\r\n","rtmp://localhost:9216/play_enhanced/h265aac.flv");
+    printf("push url eg: %s\r\n","rtmp://localhost:9216/push/h264aac");
 }
 
