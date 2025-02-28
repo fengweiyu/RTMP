@@ -20,6 +20,7 @@ using std::endl;
 
 #define AUDIO_G711_SAMPLE_RATE 8000
 #define AUDIO_G711_A_FRAME_SAMPLE_POINT_NUM 160//320
+#define AUDIO_G711_A_FRAME_SAMPLE_POINT_BASE_NUM 80
 
 char * G711Handle::m_strAudioFormatName = (char *)AUDIO_ENC_FORMAT_G711_NAME;
 int G711Handle::m_iAudioFixLen = AUDIO_G711_A_FRAME_SAMPLE_POINT_NUM;//G711中1B就是一个样本数据
@@ -147,9 +148,15 @@ int G711Handle::GetFrame(T_MediaFrameInfo *m_ptFrame)
 {
     int iRet=FALSE;
 	
-	if(m_ptFrame == NULL ||m_ptFrame->iFrameBufLen < G711Handle::m_iAudioFixLen)
-	{
+	if(m_ptFrame == NULL ||(0!=m_ptFrame->iFrameBufLen% AUDIO_G711_A_FRAME_SAMPLE_POINT_BASE_NUM))
+	{//不是80的倍数则不对
         cout<<"G711Handle GetNextFrame err:"<<m_ptFrame->iFrameBufLen<<endl;
+        m_ptFrame->iFrameProcessedLen += m_ptFrame->iFrameBufLen;
+        return iRet;
+    }
+	if(m_ptFrame->iFrameBufLen<G711Handle::m_iAudioFixLen)
+	{
+        cout<<"G711Handle need more data"<<m_ptFrame->iFrameBufLen<<endl;
         return iRet;
     }
     m_ptFrame->pbFrameStartPos = m_ptFrame->pbFrameBuf;
@@ -164,7 +171,7 @@ int G711Handle::GetFrame(T_MediaFrameInfo *m_ptFrame)
             m_ptFrame->eEncType = MEDIA_ENCODE_TYPE_G711U;
         }
 	
-        m_ptFrame->iFrameProcessedLen = m_ptFrame->pbFrameStartPos - m_ptFrame->pbFrameBuf + m_ptFrame->iFrameLen;
+        m_ptFrame->iFrameProcessedLen += m_ptFrame->pbFrameStartPos - m_ptFrame->pbFrameBuf + m_ptFrame->iFrameLen;
         iRet = TRUE;//解析出一帧则退出
 	}
 	return iRet;
@@ -409,8 +416,9 @@ int AACHandle::GetFrame(T_MediaFrameInfo *m_ptFrame)
             iSampleRateIndex = (int)((pcFrameStartPos[2]&0x3C)>>2);
             m_ptFrame->pbFrameStartPos = pcFrameStartPos;
             m_ptFrame->iFrameLen = (int)((pcFrameStartPos[3]&0x03)<<11|pcFrameStartPos[4]<<3|(pcFrameStartPos[5]&0xE0)>>5);
-            if(STREAM_TYPE_UNKNOW == m_ptFrame->eStreamType)//文件的时候才需要赋值，数据流的时候外部会赋值以外部为准
-            {
+            //if(STREAM_TYPE_UNKNOW == m_ptFrame->eStreamType)//文件的时候才需要赋值，数据流的时候外部会赋值以外部为准
+            if(MEDIA_FRAME_TYPE_UNKNOW == m_ptFrame->eFrameType)
+            {//文件的时候eFrameType外部不赋值故需要赋值，数据流的时候外部会赋值以外部为准
                 m_ptFrame->eFrameType = MEDIA_FRAME_TYPE_AUDIO_FRAME;
                 if(iSampleRateIndex>=0&&iSampleRateIndex<sizeof(g_aiAACSamplingFreqIndexValue)/sizeof(int));
                     m_ptFrame->dwSampleRate = g_aiAACSamplingFreqIndexValue[iSampleRateIndex];
