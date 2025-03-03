@@ -491,12 +491,19 @@ int TcpClient::Init(string *i_strIP,unsigned short i_wPort)
 {
 	int iRet=-1;
 	int iSocketFd=-1;
-
+    string strIP("");
+    
 	if(i_strIP==NULL)
 	{
         TCP_LOGE("TcpClient Init i_strIP NULL\r\n");
         return iRet;
 	}
+    iRet=TcpSocket::ResolveDomain(i_strIP,&strIP);
+    if(iRet < 0)
+    {
+        TCP_LOGE("TcpClient::ResolveDomain err exit %s,%s\r\n",i_strIP->c_str(),strIP.c_str());
+        return iRet;
+    }
     WORD sockVersion = MAKEWORD(2, 2);
     WSADATA wsaData;//WSADATA结构体变量的地址值
     if (WSAStartup(sockVersion, &wsaData) != 0)
@@ -527,7 +534,7 @@ int TcpClient::Init(string *i_strIP,unsigned short i_wPort)
 		memset(&tServerAddr,0, sizeof(tServerAddr));
 		tServerAddr.sin_family = AF_INET;
 		tServerAddr.sin_port = htons(i_wPort);
-		tServerAddr.sin_addr.s_addr = inet_addr(i_strIP->c_str());
+		tServerAddr.sin_addr.s_addr = inet_addr(strIP.c_str());
 		if(connect(iSocketFd, (struct sockaddr *)&tServerAddr, sizeof(tServerAddr)) < 0) 
 		{
 			TCP_LOGE("TcpSocket connect err\r\n");

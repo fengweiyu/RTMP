@@ -510,14 +510,20 @@ int TcpClient::Init(string *i_strIP,unsigned short i_wPort)
 	int iRet=-1;
 	int iSocketFd=-1;
 	struct sockaddr_in tServerAddr;
-
+    string strIP("");
 	
 	if(i_strIP==NULL)
 	{
 		perror(NULL);
 		TCP_LOGE("TcpSocketInit NULL");
+        return iRet;
 	}
-
+    iRet=TcpSocket::ResolveDomain(i_strIP,&strIP);
+    if(iRet < 0)
+    {
+        TCP_LOGE("TcpClient::ResolveDomain err exit %s,%s\r\n",i_strIP->c_str(),strIP.c_str());
+        return iRet;
+    }
 	iSocketFd=socket(AF_INET,SOCK_STREAM,0);
 	if(iSocketFd<0)
 	{
@@ -541,7 +547,7 @@ int TcpClient::Init(string *i_strIP,unsigned short i_wPort)
 		bzero(&tServerAddr, sizeof(tServerAddr));
 		tServerAddr.sin_family = AF_INET;
 		tServerAddr.sin_port = htons(i_wPort);
-		tServerAddr.sin_addr.s_addr = inet_addr(i_strIP->c_str());
+		tServerAddr.sin_addr.s_addr = inet_addr(strIP.c_str());
 		if(connect(iSocketFd, (struct sockaddr *)&tServerAddr, sizeof(tServerAddr)) < 0 && errno != EINPROGRESS) 
 		{
 			perror(NULL);
