@@ -34,13 +34,16 @@ int main(int argc, char* argv[])
 {
     int iRet = -1;
     
-    if(argc !=2)
+    if(argc < 2)
     {
         PrintUsage(argv[0]);
         return iRet;
     }
     RtmpClientManager *pRtmpClientManager = new RtmpClientManager();
-    iRet=pRtmpClientManager->Proc(argv[1]);//×èÈû
+    if(argc>2)
+        iRet=pRtmpClientManager->Proc(argv[1],argv[2]);//×èÈû
+    else
+        iRet=pRtmpClientManager->Proc(argv[1]);//×èÈû
     delete pRtmpClientManager;
     return iRet;
 }

@@ -46,6 +46,9 @@ RtmpClientManager :: RtmpClientManager()
     } 
     m_pRtmpClientIO = new RtmpClientIO();
     m_pHandlePushMediaHandle = new MediaHandle();
+    m_pOutFileName=NULL;
+    m_pMediaFile = NULL;
+    m_pMediaFile2 = NULL;
 }
 
 /*****************************************************************************
@@ -80,6 +83,11 @@ RtmpClientManager :: ~RtmpClientManager()
         fclose(m_pMediaFile);
         m_pMediaFile = NULL;
     }
+    if(NULL!= m_pMediaFile2)
+    {
+        fclose(m_pMediaFile2);
+        m_pMediaFile2 = NULL;
+    }
     if(NULL!= m_pbFileBuf)
     {
         delete [] m_pbFileBuf;
@@ -89,6 +97,11 @@ RtmpClientManager :: ~RtmpClientManager()
     {
         delete m_pFileName;
         m_pFileName = NULL;
+    }
+    if(NULL!= m_pOutFileName)
+    {
+        delete m_pOutFileName;
+        m_pOutFileName = NULL;
     }
 }
 
@@ -102,7 +115,7 @@ RtmpClientManager :: ~RtmpClientManager()
 * -----------------------------------------------
 * 2023/10/10	  V1.0.0		 Yu Weifeng 	  Created
 ******************************************************************************/
-int RtmpClientManager :: Proc(char *i_strURL)
+int RtmpClientManager :: Proc(char *i_strURL,char *i_strOutFormat)
 {
     int iRet = -1;
     T_RtmpClientCb tRtmpClientCb;
@@ -125,6 +138,10 @@ int RtmpClientManager :: Proc(char *i_strURL)
     {
         iPlayOrPublish=0;
         m_pFileName = new string("tmp");
+    }
+    if(NULL != i_strOutFormat)
+    {
+        m_pOutFileName=new string(i_strOutFormat);
     }
     if(NULL == m_pFileName)
     {
@@ -325,29 +342,52 @@ int RtmpClientManager :: HandlePlayMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,
     E_MediaEncodeType eEncType;
     E_MediaFrameType eFrameType;
     char strFileName[128]={0,};
+    E_StreamType eStreamType = STREAM_TYPE_ENHANCED_FLV_STREAM;
 
     if(NULL == m_pFileName)//"D:\\test\\2023AAC.flv"
     {
         RTMPC_LOGE("HandlePlayMediaData err %s\r\n",m_pFileName->c_str());
         return iRet;
     }
-    snprintf(strFileName,sizeof(strFileName),"%s.mp4",m_pFileName->c_str());//固定.h264文件
+    snprintf(strFileName,sizeof(strFileName),"%s.flv",m_pFileName->c_str());//固定.h264文件
+    if(NULL != m_pOutFileName)
+    {
+        snprintf(strFileName,sizeof(strFileName),"%s.flv",m_pOutFileName->c_str());//固定.h264文件
+        if(string::npos != m_pOutFileName->find("mp4") ||string::npos != m_pOutFileName->find("flv")
+        /*||string::npos != m_pOutFileName->find("raw")||string::npos != m_pOutFileName->find("h264")||string::npos != m_pOutFileName->find("h265")*/)
+        {
+            snprintf(strFileName,sizeof(strFileName),"%s",m_pOutFileName->c_str());//固定.h264文件
+        }
+        if(string::npos != m_pOutFileName->find("mp4"))
+        {
+            eStreamType=STREAM_TYPE_FMP4_STREAM;
+        }
+        if(string::npos != m_pOutFileName->find("raw")||string::npos != m_pOutFileName->find("h264")||string::npos != m_pOutFileName->find("h265"))
+        {
+            //eStreamType=STREAM_TYPE_VIDEO_STREAM;
+        }
+    }
     if(NULL == m_pMediaFile)
     {
         m_pMediaFile = fopen(strFileName,"wb");//
     } 
-
+    if(NULL == m_pMediaFile2)
+    {
+        m_pMediaFile2 = fopen(m_pFileName->c_str(),"wb");//
+    } 
 
     switch (i_ptRtmpMediaInfo->eFrameType)
     {
         case RTMP_VIDEO_KEY_FRAME:
         {
             eFrameType = MEDIA_FRAME_TYPE_VIDEO_I_FRAME;
+            iRet = fwrite(i_acDataBuf, 1,i_iDataLen, m_pMediaFile2);
             break;
         }
         case RTMP_VIDEO_INNER_FRAME:
         {
             eFrameType = MEDIA_FRAME_TYPE_VIDEO_P_FRAME;
+            iRet = fwrite(i_acDataBuf, 1,i_iDataLen, m_pMediaFile2);
             break;
         }
         case RTMP_AUDIO_FRAME:
@@ -418,7 +458,7 @@ int RtmpClientManager :: HandlePlayMediaData(T_RtmpMediaInfo *i_ptRtmpMediaInfo,
         RTMPC_LOGE("GetFrame err %d\r\n",iWriteLen);
         return iRet;
     }
-    iWriteLen = m_pMediaHandle->FrameToContainer(&tFileFrameInfo,STREAM_TYPE_FMP4_STREAM,m_pbFileBuf,RTMPC_FILE_BUF_MAX_LEN,&iHeaderLen);
+    iWriteLen = m_pMediaHandle->FrameToContainer(&tFileFrameInfo,eStreamType,m_pbFileBuf,RTMPC_FILE_BUF_MAX_LEN,&iHeaderLen);
     if(iWriteLen < 0)
     {
         RTMPC_LOGE("FrameToContainer err iWriteLen %d\r\n",iWriteLen);

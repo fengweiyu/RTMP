@@ -35,7 +35,7 @@ class RtmpClientManager
 public:
 	RtmpClientManager();
 	virtual ~RtmpClientManager();
-    int Proc(char *i_strURL);//×èÈû
+    int Proc(char *i_strURL,char *i_strOutName=NULL);//×èÈû
     int MediaProc();
     
 private:
@@ -52,8 +52,10 @@ private:
     string * m_pFileName;
     
     FILE  *m_pMediaFile;
+    FILE  *m_pMediaFile2;
     unsigned char *m_pbFileBuf;
     RtmpClientIO * m_pRtmpClientIO;
+    string * m_pOutFileName;
 };
 
 #endif
