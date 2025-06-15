@@ -3153,6 +3153,12 @@ int RtmpSession::SimpleHandshake(char *i_pcData,int i_iDataLen)
                 RTMP_LOGW("SimpleHandshake need more data %d\r\n",i_iDataLen);
                 return -2;
             }
+            if(i_iDataLen+m_iHandshakeBufLen > RTMP_C0_LEN+RTMP_C1_LEN)
+            {
+                m_iHandshakeBufLen=0;
+                RTMP_LOGE("i_iDataLen err %d %d\r\n", i_iDataLen,m_iHandshakeBufLen);
+                return -1;
+            }
             if(0 != m_iHandshakeBufLen)
             {
                 memcpy(m_abHandshakeBuf+m_iHandshakeBufLen,i_pcData,i_iDataLen);
