@@ -1466,7 +1466,7 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
         bFrameType = ((i_pbVideoTag[iProcessedLen]>>4)&0x0f);////1 = key frame, 2 = inter frame
         bCodecId = (i_pbVideoTag[iProcessedLen]&0x0f);//4bits的codecId，H.264的值为7.
         iProcessedLen++;
-        
+        RTMP_LOGD("rtmp ,bCodecId %d ,bFrameType %d\r\n",bCodecId,bFrameType);
         bIsAvcSeqHeader = i_pbVideoTag[iProcessedLen] == 0 ? 1:0;//tag Body(AVC packet type) 1 byte
         iProcessedLen++;
         //tag Body(AVC SeqHeader or AVC Raw)
@@ -1514,6 +1514,7 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
                                                    // 2 = PacketTypeSequenceEnd // 3 = PacketTypeCodedFramesX
                                                    // 4 = PacketTypeMetadata // 5 = PacketTypeMPEG2TSSequenceStart
         iProcessedLen++;
+        RTMP_LOGD("Enhanced-Rtmp %d %d\r\n",bFrameType,bPacketType);
         Read32BE((i_pbVideoTag + iProcessedLen),&dwFourCC);
         iProcessedLen+=4;
 
