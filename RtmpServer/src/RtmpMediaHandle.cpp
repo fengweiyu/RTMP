@@ -253,7 +253,9 @@ int RtmpMediaHandle::ParseH265NaluFromFrame(unsigned char *i_pbVideoData,int i_i
     unsigned char *pcFrameData = NULL;
     int iRemainDataLen = 0;
     unsigned char bNaluType = 0;
-    
+    unsigned char bStartCodeLen = 0;
+
+
     if(NULL == i_pbVideoData || NULL == o_ptFrameInfo  || NULL == o_ptFrameInfo->pbNaluData ||i_iVideoDataLen <= 4)
     {
         RTMP_LOGE("ParseH265NaluFromFrame NULL %d\r\n", i_iVideoDataLen);
@@ -264,7 +266,39 @@ int RtmpMediaHandle::ParseH265NaluFromFrame(unsigned char *i_pbVideoData,int i_i
     
     while(iRemainDataLen > 0)
     {
-        if (iRemainDataLen >= 4 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 0 && pcFrameData[3] == 1)
+        if (iRemainDataLen >= 3 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 1)
+        {
+            if (pcNaluStartPos != NULL)
+            {
+                pcNaluEndPos = pcFrameData; // 此时是一个nalu的结束
+            }
+            else
+            {
+                pcNaluStartPos = pcFrameData; // 此时是一个nalu的开始
+                bStartCodeLen = 3;
+                bNaluType = (pcNaluStartPos[bStartCodeLen] & 0x7E) >> 1; // 取nalu类型
+            }
+            if (pcNaluEndPos != NULL)
+            {
+                if (pcNaluEndPos - pcNaluStartPos > 3)
+                {
+                    iRet = SetH265NaluData(bNaluType, pcNaluStartPos + bStartCodeLen, pcNaluEndPos - pcNaluStartPos - bStartCodeLen,
+                                           o_ptFrameInfo); // 包括类型减3开始码
+                    if (iRet < 0)
+                    {
+                        RTMP_LOGE("SetH264NaluData err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen, o_ptFrameInfo->dwNaluDataMaxLen);
+                        return iRet;
+                    }
+                }
+                pcNaluStartPos = pcNaluEndPos; // 上一个nalu的结束为下一个nalu的开始
+                bStartCodeLen = 3;
+                bNaluType = (pcNaluStartPos[bStartCodeLen] & 0x7E) >> 1; // 取nalu类型
+                pcNaluEndPos = NULL;
+            }
+            pcFrameData += 3;
+            iRemainDataLen -= 3;
+        }
+        else if (iRemainDataLen >= 4 && pcFrameData[0] == 0 && pcFrameData[1] == 0 && pcFrameData[2] == 0 && pcFrameData[3] == 1)
         {
             if(pcNaluStartPos != NULL)
             {
@@ -273,13 +307,14 @@ int RtmpMediaHandle::ParseH265NaluFromFrame(unsigned char *i_pbVideoData,int i_i
             else
             {
                 pcNaluStartPos = pcFrameData;
-                bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
+                bStartCodeLen = 4;
+                bNaluType = (pcNaluStartPos[bStartCodeLen] & 0x7E)>>1;//取nalu类型
             }
             if(pcNaluEndPos != NULL)
             {
                 if(pcNaluEndPos - pcNaluStartPos > 4)
                 {
-                    iRet = SetH265NaluData(bNaluType,pcNaluStartPos+4,pcNaluEndPos - pcNaluStartPos - 4,o_ptFrameInfo);//包括类型减4//去掉00 00 00 01
+                    iRet = SetH265NaluData(bNaluType,pcNaluStartPos+bStartCodeLen,pcNaluEndPos - pcNaluStartPos - bStartCodeLen,o_ptFrameInfo);//包括类型减4//去掉00 00 00 01
                     if(iRet < 0)
                     {
                         RTMP_LOGE("SetH265NaluData err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen,o_ptFrameInfo->dwNaluDataMaxLen);
@@ -287,7 +322,8 @@ int RtmpMediaHandle::ParseH265NaluFromFrame(unsigned char *i_pbVideoData,int i_i
                     }
                 }
                 pcNaluStartPos = pcNaluEndPos;
-                bNaluType = (pcNaluStartPos[4] & 0x7E)>>1;//取nalu类型
+                bStartCodeLen = 4;
+                bNaluType = (pcNaluStartPos[bStartCodeLen] & 0x7E)>>1;//取nalu类型
                 pcNaluEndPos = NULL;
             }
             pcFrameData += 4;
@@ -301,7 +337,7 @@ int RtmpMediaHandle::ParseH265NaluFromFrame(unsigned char *i_pbVideoData,int i_i
     }
     if(pcNaluStartPos != NULL)
     {
-        iRet=SetH265NaluData(bNaluType,pcNaluStartPos+4,pcFrameData - pcNaluStartPos - 4,o_ptFrameInfo);//包括类型减4开始码
+        iRet=SetH265NaluData(bNaluType,pcNaluStartPos+bStartCodeLen,pcFrameData - pcNaluStartPos - bStartCodeLen,o_ptFrameInfo);//包括类型减4开始码
         if(iRet < 0)
         {
             RTMP_LOGE("SetH265NaluData err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen,o_ptFrameInfo->dwNaluDataMaxLen);
@@ -336,6 +372,11 @@ int RtmpMediaHandle::SetH264NaluData(unsigned char i_bNaluType,unsigned char *i_
         case 0x7:
         {
             memset(o_ptFrameInfo->abSPS,0,sizeof(o_ptFrameInfo->abSPS));
+            if (i_iNaluDataLen >= (int)sizeof(o_ptFrameInfo->abSPS))
+            {
+                RTMP_LOGE("i_iNaluDataLen %d >= sizeof(o_ptFrameInfo->abSPS) %d\r\n",i_iNaluDataLen,sizeof(o_ptFrameInfo->abSPS));
+                return iRet;
+            }
             o_ptFrameInfo->wSpsLen= i_iNaluDataLen;//包括类型(减3开始码)
             memcpy(o_ptFrameInfo->abSPS,i_pbNaluData,o_ptFrameInfo->wSpsLen);
             break;
@@ -343,6 +384,11 @@ int RtmpMediaHandle::SetH264NaluData(unsigned char i_bNaluType,unsigned char *i_
         case 0x8:
         {
             memset(o_ptFrameInfo->abPPS,0,sizeof(o_ptFrameInfo->abPPS));
+            if (i_iNaluDataLen >= (int)sizeof(o_ptFrameInfo->abPPS))
+            {
+                RTMP_LOGE("i_iNaluDataLen %d >= sizeof(o_ptFrameInfo->abPPS) %d\r\n",i_iNaluDataLen,sizeof(o_ptFrameInfo->abPPS));
+                return iRet;
+            }
             o_ptFrameInfo->wPpsLen= i_iNaluDataLen;//包括类型减3开始码
             memcpy(o_ptFrameInfo->abPPS,i_pbNaluData,o_ptFrameInfo->wPpsLen);
             break;
@@ -353,6 +399,12 @@ int RtmpMediaHandle::SetH264NaluData(unsigned char i_bNaluType,unsigned char *i_
             if(o_ptFrameInfo->dwNaluDataLen+i_iNaluDataLen > o_ptFrameInfo->dwNaluDataMaxLen)//去掉00 00 00 01
             {
                 RTMP_LOGE("o_ptFrameInfo->dwNaluDataLen > o_ptFrameInfo->dwNaluDataMaxLen err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen,o_ptFrameInfo->dwNaluDataMaxLen);
+                return iRet;
+            }
+            if (o_ptFrameInfo->dwNaluCnt >= sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo)) 
+            {
+                RTMP_LOGE("o_ptFrameInfo->dwNaluCnt %d >= MAX_NALU_CNT_ONE_FRAME %d\r\n",
+                          o_ptFrameInfo->dwNaluCnt,sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo));
                 return iRet;
             }
             o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].pbData = o_ptFrameInfo->pbNaluData+o_ptFrameInfo->dwNaluDataLen;
@@ -398,6 +450,12 @@ int RtmpMediaHandle::SetH265NaluData(unsigned char i_bNaluType,unsigned char *i_
             RTMP_LOGE("o_ptFrameInfo->dwNaluDataLen > o_ptFrameInfo->dwNaluDataMaxLen err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen,o_ptFrameInfo->dwNaluDataMaxLen);
             return iRet;
         }
+        if (o_ptFrameInfo->dwNaluCnt >= sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo)) 
+        {
+            RTMP_LOGE("o_ptFrameInfo->dwNaluCnt %d >= MAX_NALU_CNT_ONE_FRAME %d\r\n",
+                      o_ptFrameInfo->dwNaluCnt,sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo));
+            return iRet;
+        }
         o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].pbData = o_ptFrameInfo->pbNaluData+o_ptFrameInfo->dwNaluDataLen;
         memcpy(o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].pbData,i_pbNaluData,i_iNaluDataLen);
         o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].dwDataLen = i_iNaluDataLen;//去掉00 00 00 01
@@ -411,6 +469,12 @@ int RtmpMediaHandle::SetH265NaluData(unsigned char i_bNaluType,unsigned char *i_
             RTMP_LOGE("o_ptFrameInfo->dwNaluDataLen > o_ptFrameInfo->dwNaluDataMaxLen err %d %d\r\n", o_ptFrameInfo->dwNaluDataLen,o_ptFrameInfo->dwNaluDataMaxLen);
             return iRet;
         }
+        if (o_ptFrameInfo->dwNaluCnt >= sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo)) 
+        {
+            RTMP_LOGE("o_ptFrameInfo->dwNaluCnt %d >= MAX_NALU_CNT_ONE_FRAME %d\r\n",
+                      o_ptFrameInfo->dwNaluCnt,sizeof(o_ptFrameInfo->atNaluInfo) / sizeof(T_RtmpNaluInfo));
+            return iRet;
+        }
         o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].pbData = o_ptFrameInfo->pbNaluData+o_ptFrameInfo->dwNaluDataLen;
         memcpy(o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].pbData,i_pbNaluData,i_iNaluDataLen);
         o_ptFrameInfo->atNaluInfo[o_ptFrameInfo->dwNaluCnt].dwDataLen = i_iNaluDataLen;//去掉00 00 00 01
@@ -420,18 +484,33 @@ int RtmpMediaHandle::SetH265NaluData(unsigned char i_bNaluType,unsigned char *i_
     else if(i_bNaluType == 32)//VPS
     {
         memset(o_ptFrameInfo->abVPS,0,sizeof(o_ptFrameInfo->abVPS));
+        if (i_iNaluDataLen >= (int)sizeof(o_ptFrameInfo->abVPS))
+        {
+            RTMP_LOGE("i_iNaluDataLen %d >= sizeof(o_ptFrameInfo->abVPS) %d\r\n",i_iNaluDataLen,sizeof(o_ptFrameInfo->abVPS));
+            return iRet;
+        }
         o_ptFrameInfo->wVpsLen= i_iNaluDataLen;//包括类型减4
         memcpy(o_ptFrameInfo->abVPS,i_pbNaluData,o_ptFrameInfo->wVpsLen);
     }
     else if(i_bNaluType == 33)//SPS
     {
         memset(o_ptFrameInfo->abSPS,0,sizeof(o_ptFrameInfo->abSPS));
+        if (i_iNaluDataLen >= (int)sizeof(o_ptFrameInfo->abSPS))
+        {
+            RTMP_LOGE("i_iNaluDataLen %d >= sizeof(o_ptFrameInfo->abSPS) %d\r\n",i_iNaluDataLen,sizeof(o_ptFrameInfo->abSPS));
+            return iRet;
+        }
         o_ptFrameInfo->wSpsLen= i_iNaluDataLen;//包括类型减4
         memcpy(o_ptFrameInfo->abSPS,i_pbNaluData,o_ptFrameInfo->wSpsLen);
     }
     else if(i_bNaluType == 34)//PPS
     {
         memset(o_ptFrameInfo->abPPS,0,sizeof(o_ptFrameInfo->abPPS));
+        if (i_iNaluDataLen >= (int)sizeof(o_ptFrameInfo->abPPS))
+        {
+            RTMP_LOGE("i_iNaluDataLen %d >= sizeof(o_ptFrameInfo->abPPS) %d\r\n",i_iNaluDataLen,sizeof(o_ptFrameInfo->abPPS));
+            return iRet;
+        }
         o_ptFrameInfo->wPpsLen= i_iNaluDataLen;//包括类型减4
         memcpy(o_ptFrameInfo->abPPS,i_pbNaluData,o_ptFrameInfo->wPpsLen);
     }
@@ -1691,18 +1770,33 @@ int RtmpMediaHandle::GetVideoData(unsigned char *i_pbVideoTag,int i_iTagLen,T_Rt
                     {
                         case 32:
                         {//VPS
+                            if (lenOfVideoParameterSets >= sizeof(m_ptRtmpFrameInfo->abVPS))
+                            {
+                                RTMP_LOGE("lenOfVideoParameterSets %d >= sizeof(m_ptRtmpFrameInfo->abVPS) %d\r\n",lenOfVideoParameterSets,sizeof(m_ptRtmpFrameInfo->abVPS));
+                                return -1;
+                            }
                             m_ptRtmpFrameInfo->wVpsLen= lenOfVideoParameterSets;
                             memcpy(m_ptRtmpFrameInfo->abVPS,&pbVideoParams[2],m_ptRtmpFrameInfo->wVpsLen);
                             break;
                         }
                         case 33:
                         {//SPS
+                            if (lenOfVideoParameterSets >= sizeof(m_ptRtmpFrameInfo->abSPS))
+                            {
+                                RTMP_LOGE("lenOfVideoParameterSets %d >= sizeof(m_ptRtmpFrameInfo->abSPS) %d\r\n",lenOfVideoParameterSets,sizeof(m_ptRtmpFrameInfo->abSPS));
+                                return -1;
+                            }
                             m_ptRtmpFrameInfo->wSpsLen= lenOfVideoParameterSets;
                             memcpy(m_ptRtmpFrameInfo->abSPS,&pbVideoParams[2],m_ptRtmpFrameInfo->wSpsLen);
                             break;
                         }
                         case 34:
                         {//PPS
+                            if (lenOfVideoParameterSets >= sizeof(m_ptRtmpFrameInfo->abPPS))
+                            {
+                                RTMP_LOGE("lenOfVideoParameterSets %d >= sizeof(m_ptRtmpFrameInfo->abPPS) %d\r\n",lenOfVideoParameterSets,sizeof(m_ptRtmpFrameInfo->abPPS));
+                                return -1;
+                            }
                             m_ptRtmpFrameInfo->wPpsLen = lenOfVideoParameterSets;
                             memcpy(m_ptRtmpFrameInfo->abPPS,&pbVideoParams[2],m_ptRtmpFrameInfo->wPpsLen);
                             break;
